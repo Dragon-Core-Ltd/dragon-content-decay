@@ -1,0 +1,20 @@
+{
+    "name": "dragon-content-decay",
+    "version": "1.0.0",
+    "description": "Identify content losing traffic over time by connecting to Google Analytics 4",
+    "author": "Dragon Core",
+    "license": "GPL-2.0-or-later",
+    "scripts": {
+        "env:start": "wp-env start",
+        "env:stop": "wp-env stop",
+        "env:destroy": "wp-env destroy",
+        "env:cli": "wp-env run cli",
+        "build:css": "postcss admin/css/admin.css -o admin/css/admin.min.css",
+        "build:js": "terser admin/js/admin.js -o admin/js/admin.min.js",
+        "build": "npm run build:css && npm run build:js",
+        "watch": "nodemon --watch admin/css --watch admin/js -e css,js --exec 'npm run build'"
+    },
+    "devDependencies": {
+        "@wordpress/env": "^10.0.0"
+    }
+}
