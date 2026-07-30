@@ -9,127 +9,108 @@ namespace DragonContentDecay;
 
 class Plugin {
 
-    /**
-     * Singleton instance
-     */
-    private static ?Plugin $instance = null;
+	/**
+	 * Singleton instance
+	 */
+	private static ?Plugin $instance = null;
 
-    /**
-     * Admin instance
-     */
-    private ?Admin $admin = null;
+	/**
+	 * Admin instance
+	 */
+	private ?Admin $admin = null;
 
-    /**
-     * OAuth instance
-     */
-    private ?OAuth $oauth = null;
+	/**
+	 * OAuth instance
+	 */
+	private ?OAuth $oauth = null;
 
-    /**
-     * GA4 API instance
-     */
-    private ?API_GA4 $api_ga4 = null;
+	/**
+	 * GA4 API instance
+	 */
+	private ?API_GA4 $api_ga4 = null;
 
-    /**
-     * Analyzer instance
-     */
-    private ?Analyzer $analyzer = null;
+	/**
+	 * Analyzer instance
+	 */
+	private ?Analyzer $analyzer = null;
 
-    /**
-     * Scheduler instance
-     */
-    private ?Scheduler $scheduler = null;
+	/**
+	 * Scheduler instance
+	 */
+	private ?Scheduler $scheduler = null;
 
-    /**
-     * Notifications instance
-     */
-    private ?Notifications $notifications = null;
+	/**
+	 * Notifications instance
+	 */
+	private ?Notifications $notifications = null;
 
-    /**
-     * Get singleton instance
-     */
-    public static function get_instance(): Plugin {
-        if ( null === self::$instance ) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
+	/**
+	 * Get singleton instance
+	 */
+	public static function get_instance(): Plugin {
+		if ( null === self::$instance ) {
+			self::$instance = new self();
+		}
+		return self::$instance;
+	}
 
-    /**
-     * Constructor
-     */
-    private function __construct() {
-        $this->init_components();
-        $this->init_hooks();
-    }
+	/**
+	 * Constructor
+	 */
+	private function __construct() {
+		$this->init_components();
+	}
 
-    /**
-     * Initialize plugin components
-     */
-    private function init_components(): void {
-        $this->oauth         = new OAuth();
-        $this->api_ga4       = new API_GA4( $this->oauth );
-        $this->analyzer      = new Analyzer( $this->api_ga4 );
-        $this->scheduler     = new Scheduler( $this->analyzer );
-        $this->notifications = new Notifications();
-        $this->admin         = new Admin( $this->oauth, $this->analyzer );
-    }
+	/**
+	 * Initialize plugin components
+	 */
+	private function init_components(): void {
+		$this->oauth         = new OAuth();
+		$this->api_ga4       = new API_GA4( $this->oauth );
+		$this->analyzer      = new Analyzer( $this->api_ga4 );
+		$this->scheduler     = new Scheduler( $this->analyzer );
+		$this->notifications = new Notifications();
+		$this->admin         = new Admin( $this->oauth, $this->analyzer );
+	}
 
-    /**
-     * Initialize WordPress hooks
-     */
-    private function init_hooks(): void {
-        add_action( 'init', [ $this, 'load_textdomain' ] );
-    }
+	/**
+	 * Plugin activation
+	 */
+	public static function activate(): void {
+		self::create_tables();
+		self::set_default_options();
 
-    /**
-     * Load plugin textdomain
-     */
-    public function load_textdomain(): void {
-        load_plugin_textdomain(
-            'dragon-content-decay',
-            false,
-            dirname( DCD_PLUGIN_BASENAME ) . '/languages'
-        );
-    }
+		// Schedule cron events
+		if ( ! wp_next_scheduled( 'dcd_daily_sync' ) ) {
+			wp_schedule_event( time(), 'daily', 'dcd_daily_sync' );
+		}
 
-    /**
-     * Plugin activation
-     */
-    public static function activate(): void {
-        self::create_tables();
-        self::set_default_options();
+		// Flush rewrite rules
+		flush_rewrite_rules();
+	}
 
-        // Schedule cron events
-        if ( ! wp_next_scheduled( 'dcd_daily_sync' ) ) {
-            wp_schedule_event( time(), 'daily', 'dcd_daily_sync' );
-        }
+	/**
+	 * Plugin deactivation
+	 */
+	public static function deactivate(): void {
+		// Clear scheduled events
+		wp_clear_scheduled_hook( 'dcd_daily_sync' );
 
-        // Flush rewrite rules
-        flush_rewrite_rules();
-    }
+		// Flush rewrite rules
+		flush_rewrite_rules();
+	}
 
-    /**
-     * Plugin deactivation
-     */
-    public static function deactivate(): void {
-        // Clear scheduled events
-        wp_clear_scheduled_hook( 'dcd_daily_sync' );
+	/**
+	 * Create database tables
+	 */
+	private static function create_tables(): void {
+		global $wpdb;
 
-        // Flush rewrite rules
-        flush_rewrite_rules();
-    }
+		$charset_collate = $wpdb->get_charset_collate();
 
-    /**
-     * Create database tables
-     */
-    private static function create_tables(): void {
-        global $wpdb;
-
-        $charset_collate = $wpdb->get_charset_collate();
-
-        // Analytics data table
-        $table_analytics = $wpdb->prefix . 'dcd_analytics';
-        $sql_analytics = "CREATE TABLE $table_analytics (
+		// Analytics data table
+		$table_analytics = $wpdb->prefix . 'dcd_analytics';
+		$sql_analytics   = "CREATE TABLE $table_analytics (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             post_id bigint(20) unsigned NOT NULL,
             date date NOT NULL,
@@ -142,9 +123,9 @@ class Plugin {
             KEY idx_date (date)
         ) $charset_collate;";
 
-        // Decay scores cache table
-        $table_scores = $wpdb->prefix . 'dcd_scores';
-        $sql_scores = "CREATE TABLE $table_scores (
+		// Decay scores cache table
+		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$sql_scores   = "CREATE TABLE $table_scores (
             post_id bigint(20) unsigned NOT NULL,
             decay_score float NOT NULL DEFAULT 0,
             trend varchar(20) NOT NULL DEFAULT 'stable',
@@ -154,60 +135,60 @@ class Plugin {
             PRIMARY KEY  (post_id)
         ) $charset_collate;";
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta( $sql_analytics );
-        dbDelta( $sql_scores );
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		dbDelta( $sql_analytics );
+		dbDelta( $sql_scores );
 
-        // Store database version
-        update_option( 'dcd_db_version', DCD_VERSION );
-    }
+		// Store database version
+		update_option( 'dcd_db_version', DCD_VERSION );
+	}
 
-    /**
-     * Set default plugin options
-     */
-    private static function set_default_options(): void {
-        $defaults = [
-            'dcd_decay_threshold'    => -20,
-            'dcd_comparison_period'  => 30,
-            'dcd_email_frequency'    => 'off',
-            'dcd_post_types'         => [ 'post' ],
-            'dcd_ga4_property_id'    => '',
-            'dcd_google_client_id'   => '',
-            'dcd_google_client_secret' => '',
-        ];
+	/**
+	 * Set default plugin options
+	 */
+	private static function set_default_options(): void {
+		$defaults = array(
+			'dcd_decay_threshold'      => -20,
+			'dcd_comparison_period'    => 30,
+			'dcd_email_frequency'      => 'off',
+			'dcd_post_types'           => array( 'post' ),
+			'dcd_ga4_property_id'      => '',
+			'dcd_google_client_id'     => '',
+			'dcd_google_client_secret' => '',
+		);
 
-        foreach ( $defaults as $option => $value ) {
-            if ( false === get_option( $option ) ) {
-                add_option( $option, $value );
-            }
-        }
-    }
+		foreach ( $defaults as $option => $value ) {
+			if ( false === get_option( $option ) ) {
+				add_option( $option, $value );
+			}
+		}
+	}
 
-    /**
-     * Get Admin instance
-     */
-    public function get_admin(): Admin {
-        return $this->admin;
-    }
+	/**
+	 * Get Admin instance
+	 */
+	public function get_admin(): Admin {
+		return $this->admin;
+	}
 
-    /**
-     * Get OAuth instance
-     */
-    public function get_oauth(): OAuth {
-        return $this->oauth;
-    }
+	/**
+	 * Get OAuth instance
+	 */
+	public function get_oauth(): OAuth {
+		return $this->oauth;
+	}
 
-    /**
-     * Get API_GA4 instance
-     */
-    public function get_api_ga4(): API_GA4 {
-        return $this->api_ga4;
-    }
+	/**
+	 * Get API_GA4 instance
+	 */
+	public function get_api_ga4(): API_GA4 {
+		return $this->api_ga4;
+	}
 
-    /**
-     * Get Analyzer instance
-     */
-    public function get_analyzer(): Analyzer {
-        return $this->analyzer;
-    }
+	/**
+	 * Get Analyzer instance
+	 */
+	public function get_analyzer(): Analyzer {
+		return $this->analyzer;
+	}
 }

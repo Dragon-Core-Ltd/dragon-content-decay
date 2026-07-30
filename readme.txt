@@ -1,8 +1,8 @@
 === Dragon Content Decay ===
 Contributors: dragoncore
-Tags: analytics, content, seo, google analytics, ga4, traffic, decay
+Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 7.0
 Requires PHP: 8.0
 Stable tag: 1.0.0
 License: GPLv2 or later
@@ -110,7 +110,7 @@ Dragon Content Decay connects to Google Analytics 4 to retrieve traffic data for
 **Third-Party Services:**
 This plugin uses the [Google Analytics Data API](https://developers.google.com/analytics/devguides/reporting/data/v1) to retrieve analytics data. Your use of this API is subject to [Google's Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms).
 
-For more information, visit [Dragon Core](https://dragoncore.ltd/).
+For more information, visit [Dragon Core](https://plugins.dragoncore.ltd/).
 
 == Upgrade Notice ==
 

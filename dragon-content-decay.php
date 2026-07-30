@@ -1,15 +1,14 @@
 <?php
 /**
  * Plugin Name: Dragon Content Decay
- * Plugin URI: https://dcplugins.com/plugins/dragon-content-decay
+ * Plugin URI: https://plugins.dragoncore.ltd/plugins/dragon-content-decay
  * Description: Identify content losing traffic over time by connecting to Google Analytics 4. Helps prioritize which posts to refresh.
  * Version: 1.0.0
  * Author: Dragon Core
- * Author URI: https://dcplugins.com
+ * Author URI: https://plugins.dragoncore.ltd
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: dragon-content-decay
- * Domain Path: /languages
  * Requires at least: 6.0
  * Requires PHP: 8.0
  */
@@ -18,7 +17,7 @@ namespace DragonContentDecay;
 
 // Prevent direct access
 if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+	exit;
 }
 
 // Plugin constants
@@ -30,7 +29,7 @@ define( 'DCD_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 // Autoload Composer dependencies
 if ( file_exists( DCD_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-    require_once DCD_PLUGIN_DIR . 'vendor/autoload.php';
+	require_once DCD_PLUGIN_DIR . 'vendor/autoload.php';
 }
 
 // Load plugin classes
@@ -46,7 +45,7 @@ require_once DCD_PLUGIN_DIR . 'includes/class-notifications.php';
  * Plugin activation hook
  */
 function dcd_activate() {
-    Plugin::activate();
+	Plugin::activate();
 }
 register_activation_hook( __FILE__, __NAMESPACE__ . '\dcd_activate' );
 
@@ -54,7 +53,7 @@ register_activation_hook( __FILE__, __NAMESPACE__ . '\dcd_activate' );
  * Plugin deactivation hook
  */
 function dcd_deactivate() {
-    Plugin::deactivate();
+	Plugin::deactivate();
 }
 register_deactivation_hook( __FILE__, __NAMESPACE__ . '\dcd_deactivate' );
 
@@ -62,7 +61,7 @@ register_deactivation_hook( __FILE__, __NAMESPACE__ . '\dcd_deactivate' );
  * Initialize the plugin
  */
 function dcd_init() {
-    Plugin::get_instance();
+	Plugin::get_instance();
 }
 add_action( 'plugins_loaded', __NAMESPACE__ . '\dcd_init' );
 
@@ -73,12 +72,12 @@ add_action( 'plugins_loaded', __NAMESPACE__ . '\dcd_init' );
  * @return array Modified links.
  */
 function dcd_plugin_action_links( array $links ): array {
-    $settings_link = sprintf(
-        '<a href="%s">%s</a>',
-        admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ),
-        __( 'Settings', 'dragon-content-decay' )
-    );
-    array_unshift( $links, $settings_link );
-    return $links;
+	$settings_link = sprintf(
+		'<a href="%s">%s</a>',
+		esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ),
+		esc_html__( 'Settings', 'dragon-content-decay' )
+	);
+	array_unshift( $links, $settings_link );
+	return $links;
 }
 add_filter( 'plugin_action_links_' . DCD_PLUGIN_BASENAME, __NAMESPACE__ . '\dcd_plugin_action_links' );
