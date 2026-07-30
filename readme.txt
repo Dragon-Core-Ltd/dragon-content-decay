@@ -110,7 +110,7 @@ Dragon Content Decay connects to Google Analytics 4 to retrieve traffic data for
 **Third-Party Services:**
 This plugin uses the [Google Analytics Data API](https://developers.google.com/analytics/devguides/reporting/data/v1) to retrieve analytics data. Your use of this API is subject to [Google's Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms).
 
-For more information, visit [Dragon Core](https://plugins.dragoncore.ltd/).
+For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
 

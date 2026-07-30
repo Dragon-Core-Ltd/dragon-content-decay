@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: Dragon Content Decay
- * Plugin URI: https://plugins.dragoncore.ltd/plugins/dragon-content-decay
+ * Plugin URI: https://dragoncore.ltd/plugins/dragon-content-decay
  * Description: Identify content losing traffic over time by connecting to Google Analytics 4. Helps prioritize which posts to refresh.
  * Version: 1.0.0
  * Author: Dragon Core
- * Author URI: https://plugins.dragoncore.ltd
+ * Author URI: https://dragoncore.ltd
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: dragon-content-decay
