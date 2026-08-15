@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
 		</a>
 	</nav>
 
-	<?php settings_errors( 'dcd_settings' ); ?>
+	<?php settings_errors( 'dragoncontentdecay_settings' ); ?>
 
 	<?php // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only success notice flag; no state change. ?>
 	<?php if ( isset( $_GET['connected'] ) ) : ?>
@@ -40,7 +40,7 @@ defined( 'ABSPATH' ) || exit;
 	<?php endif; ?>
 
 	<form method="post" action="">
-		<?php wp_nonce_field( 'dcd_save_settings', 'dcd_settings_nonce' ); ?>
+		<?php wp_nonce_field( 'dragoncontentdecay_save_settings', 'dragoncontentdecay_settings_nonce' ); ?>
 
 		<!-- Google API Section -->
 		<div class="dcd-settings-section">
@@ -62,12 +62,12 @@ defined( 'ABSPATH' ) || exit;
 			<table class="form-table">
 				<tr>
 					<th scope="row">
-						<label for="dcd_google_client_id"><?php esc_html_e( 'Client ID', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_google_client_id"><?php esc_html_e( 'Client ID', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
 						<input type="text"
-								id="dcd_google_client_id"
-								name="dcd_google_client_id"
+								id="dragoncontentdecay_google_client_id"
+								name="dragoncontentdecay_google_client_id"
 								value="<?php echo esc_attr( $settings['client_id'] ); ?>"
 								class="regular-text"
 								placeholder="123456789-abc123.apps.googleusercontent.com">
@@ -75,12 +75,12 @@ defined( 'ABSPATH' ) || exit;
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="dcd_google_client_secret"><?php esc_html_e( 'Client Secret', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_google_client_secret"><?php esc_html_e( 'Client Secret', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
 						<input type="password"
-								id="dcd_google_client_secret"
-								name="dcd_google_client_secret"
+								id="dragoncontentdecay_google_client_secret"
+								name="dragoncontentdecay_google_client_secret"
 								value="<?php echo esc_attr( $settings['client_secret'] ); ?>"
 								class="regular-text"
 								placeholder="GOCSPX-...">
@@ -88,12 +88,12 @@ defined( 'ABSPATH' ) || exit;
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="dcd_ga4_property_id"><?php esc_html_e( 'GA4 Property ID', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_ga4_property_id"><?php esc_html_e( 'GA4 Property ID', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
 						<input type="text"
-								id="dcd_ga4_property_id"
-								name="dcd_ga4_property_id"
+								id="dragoncontentdecay_ga4_property_id"
+								name="dragoncontentdecay_ga4_property_id"
 								value="<?php echo esc_attr( $settings['ga4_property_id'] ); ?>"
 								class="regular-text"
 								placeholder="123456789">
@@ -110,7 +110,7 @@ defined( 'ABSPATH' ) || exit;
 								<span class="dashicons dashicons-yes-alt"></span>
 								<?php esc_html_e( 'Connected', 'dragon-content-decay' ); ?>
 							</span>
-							<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=disconnect' ), 'dcd_oauth_action' ) ); ?>"
+							<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=disconnect' ), 'dragoncontentdecay_oauth_action' ) ); ?>"
 								class="button button-secondary">
 								<?php esc_html_e( 'Disconnect', 'dragon-content-decay' ); ?>
 							</a>
@@ -120,7 +120,7 @@ defined( 'ABSPATH' ) || exit;
 								<?php esc_html_e( 'Not Connected', 'dragon-content-decay' ); ?>
 							</span>
 							<?php if ( ! empty( $settings['client_id'] ) && ! empty( $settings['client_secret'] ) ) : ?>
-								<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=connect' ), 'dcd_oauth_action' ) ); ?>"
+								<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=connect' ), 'dragoncontentdecay_oauth_action' ) ); ?>"
 									class="button button-primary">
 									<?php esc_html_e( 'Connect to Google', 'dragon-content-decay' ); ?>
 								</a>
@@ -145,12 +145,12 @@ defined( 'ABSPATH' ) || exit;
 			<table class="form-table">
 				<tr>
 					<th scope="row">
-						<label for="dcd_decay_threshold"><?php esc_html_e( 'Decay Threshold', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_decay_threshold"><?php esc_html_e( 'Decay Threshold', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
 						<input type="number"
-								id="dcd_decay_threshold"
-								name="dcd_decay_threshold"
+								id="dragoncontentdecay_decay_threshold"
+								name="dragoncontentdecay_decay_threshold"
 								value="<?php echo esc_attr( $settings['decay_threshold'] ); ?>"
 								min="-100"
 								max="0"
@@ -163,10 +163,10 @@ defined( 'ABSPATH' ) || exit;
 				</tr>
 				<tr>
 					<th scope="row">
-						<label for="dcd_comparison_period"><?php esc_html_e( 'Comparison Period', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_comparison_period"><?php esc_html_e( 'Comparison Period', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
-						<select id="dcd_comparison_period" name="dcd_comparison_period">
+						<select id="dragoncontentdecay_comparison_period" name="dragoncontentdecay_comparison_period">
 							<option value="30" <?php selected( $settings['comparison_period'], 30 ); ?>>
 								<?php esc_html_e( '30 days', 'dragon-content-decay' ); ?>
 							</option>
@@ -193,7 +193,7 @@ defined( 'ABSPATH' ) || exit;
 							?>
 							<label>
 								<input type="checkbox"
-										name="dcd_post_types[]"
+										name="dragoncontentdecay_post_types[]"
 										value="<?php echo esc_attr( $dragoncontentdecay_post_type->name ); ?>"
 										<?php checked( in_array( $dragoncontentdecay_post_type->name, $selected_types, true ) ); ?>>
 								<?php echo esc_html( $dragoncontentdecay_post_type->label ); ?>
@@ -214,10 +214,10 @@ defined( 'ABSPATH' ) || exit;
 			<table class="form-table">
 				<tr>
 					<th scope="row">
-						<label for="dcd_email_frequency"><?php esc_html_e( 'Email Digest', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_email_frequency"><?php esc_html_e( 'Email Digest', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
-						<select id="dcd_email_frequency" name="dcd_email_frequency">
+						<select id="dragoncontentdecay_email_frequency" name="dragoncontentdecay_email_frequency">
 							<option value="off" <?php selected( $settings['email_frequency'], 'off' ); ?>>
 								<?php esc_html_e( 'Off', 'dragon-content-decay' ); ?>
 							</option>

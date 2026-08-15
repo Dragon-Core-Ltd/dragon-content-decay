@@ -20,7 +20,7 @@
             url: dcdAdmin.ajaxUrl,
             type: 'POST',
             data: {
-                action: 'dcd_manual_sync',
+                action: 'dragoncontentdecay_manual_sync',
                 nonce: dcdAdmin.nonce
             },
             success: function(response) {
@@ -60,7 +60,7 @@
     });
 
     // Show/hide password field
-    $('#dcd_google_client_secret').on('focus', function() {
+    $('#dragoncontentdecay_google_client_secret').on('focus', function() {
         $(this).attr('type', 'text');
     }).on('blur', function() {
         $(this).attr('type', 'password');

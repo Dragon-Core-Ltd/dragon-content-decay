@@ -91,16 +91,16 @@ class Admin {
 
 		wp_enqueue_style(
 			'dcd-admin',
-			DCD_PLUGIN_URL . 'admin/css/admin.css',
+			DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/css/admin.css',
 			array(),
-			DCD_VERSION
+			DRAGONCONTENTDECAY_VERSION
 		);
 
 		wp_enqueue_script(
 			'dcd-admin',
-			DCD_PLUGIN_URL . 'admin/js/admin.js',
+			DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/js/admin.js',
 			array( 'jquery' ),
-			DCD_VERSION,
+			DRAGONCONTENTDECAY_VERSION,
 			true
 		);
 
@@ -109,7 +109,7 @@ class Admin {
 			'dcdAdmin',
 			array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'dcd_admin_nonce' ),
+				'nonce'   => wp_create_nonce( 'dragoncontentdecay_admin_nonce' ),
 				'i18n'    => array(
 					'syncing' => __( 'Syncing...', 'dragon-content-decay' ),
 					'synced'  => __( 'Sync complete!', 'dragon-content-decay' ),
@@ -125,7 +125,7 @@ class Admin {
 	public function render_dashboard_page(): void {
 		// Get data for dashboard
 		$is_connected    = $this->oauth->is_connected();
-		$decay_threshold = get_option( 'dcd_decay_threshold', -20 );
+		$decay_threshold = get_option( 'dragoncontentdecay_decay_threshold', -20 );
 		$posts_data      = $is_connected ? $this->get_dashboard_data() : array();
 		$current_tab     = 'dashboard';
 		$summary         = $is_connected ? $this->analyzer->get_summary() : array();
@@ -141,7 +141,7 @@ class Admin {
 			'growing'  => __( 'Growing', 'dragon-content-decay' ),
 		);
 
-		include DCD_PLUGIN_DIR . 'admin/views/dashboard.php';
+		include DRAGONCONTENTDECAY_PLUGIN_DIR . 'admin/views/dashboard.php';
 	}
 
 	/**
@@ -149,7 +149,7 @@ class Admin {
 	 */
 	public function render_settings_page(): void {
 		// Handle form submission
-		if ( isset( $_POST['dcd_settings_nonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['dcd_settings_nonce'] ) ), 'dcd_save_settings' ) ) {
+		if ( isset( $_POST['dragoncontentdecay_settings_nonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['dragoncontentdecay_settings_nonce'] ) ), 'dragoncontentdecay_save_settings' ) ) {
 			$this->save_settings();
 		}
 
@@ -160,7 +160,7 @@ class Admin {
 
 			// Verify nonce for connect/disconnect actions
 			if ( in_array( $action, array( 'connect', 'disconnect' ), true ) ) {
-				if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dcd_oauth_action' ) ) {
+				if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
 					wp_die(
 						esc_html__( 'Security check failed. Please try again.', 'dragon-content-decay' ),
 						esc_html__( 'Error', 'dragon-content-decay' ),
@@ -181,7 +181,7 @@ class Admin {
 		$post_types     = get_post_types( array( 'public' => true ), 'objects' );
 		$selected_types = (array) $settings['post_types'];
 
-		include DCD_PLUGIN_DIR . 'admin/views/settings.php';
+		include DRAGONCONTENTDECAY_PLUGIN_DIR . 'admin/views/settings.php';
 	}
 
 	/**
@@ -189,13 +189,13 @@ class Admin {
 	 */
 	private function get_settings(): array {
 		return array(
-			'client_id'         => get_option( 'dcd_google_client_id', '' ),
-			'client_secret'     => get_option( 'dcd_google_client_secret', '' ),
-			'ga4_property_id'   => get_option( 'dcd_ga4_property_id', '' ),
-			'decay_threshold'   => get_option( 'dcd_decay_threshold', -20 ),
-			'comparison_period' => get_option( 'dcd_comparison_period', 30 ),
-			'email_frequency'   => get_option( 'dcd_email_frequency', 'off' ),
-			'post_types'        => get_option( 'dcd_post_types', array( 'post' ) ),
+			'client_id'         => get_option( 'dragoncontentdecay_google_client_id', '' ),
+			'client_secret'     => get_option( 'dragoncontentdecay_google_client_secret', '' ),
+			'ga4_property_id'   => get_option( 'dragoncontentdecay_ga4_property_id', '' ),
+			'decay_threshold'   => get_option( 'dragoncontentdecay_decay_threshold', -20 ),
+			'comparison_period' => get_option( 'dragoncontentdecay_comparison_period', 30 ),
+			'email_frequency'   => get_option( 'dragoncontentdecay_email_frequency', 'off' ),
+			'post_types'        => get_option( 'dragoncontentdecay_post_types', array( 'post' ) ),
 			'is_connected'      => $this->oauth->is_connected(),
 		);
 	}
@@ -208,41 +208,41 @@ class Admin {
 			return;
 		}
 
-		if ( ! isset( $_POST['dcd_settings_nonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['dcd_settings_nonce'] ) ), 'dcd_save_settings' ) ) {
+		if ( ! isset( $_POST['dragoncontentdecay_settings_nonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_POST['dragoncontentdecay_settings_nonce'] ) ), 'dragoncontentdecay_save_settings' ) ) {
 			return;
 		}
 
 		// Sanitize and save each setting
-		if ( isset( $_POST['dcd_google_client_id'] ) ) {
-			update_option( 'dcd_google_client_id', sanitize_text_field( wp_unslash( $_POST['dcd_google_client_id'] ) ) );
+		if ( isset( $_POST['dragoncontentdecay_google_client_id'] ) ) {
+			update_option( 'dragoncontentdecay_google_client_id', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_google_client_id'] ) ) );
 		}
 
-		if ( isset( $_POST['dcd_google_client_secret'] ) ) {
-			update_option( 'dcd_google_client_secret', sanitize_text_field( wp_unslash( $_POST['dcd_google_client_secret'] ) ) );
+		if ( isset( $_POST['dragoncontentdecay_google_client_secret'] ) ) {
+			update_option( 'dragoncontentdecay_google_client_secret', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_google_client_secret'] ) ) );
 		}
 
-		if ( isset( $_POST['dcd_ga4_property_id'] ) ) {
-			update_option( 'dcd_ga4_property_id', sanitize_text_field( wp_unslash( $_POST['dcd_ga4_property_id'] ) ) );
+		if ( isset( $_POST['dragoncontentdecay_ga4_property_id'] ) ) {
+			update_option( 'dragoncontentdecay_ga4_property_id', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_ga4_property_id'] ) ) );
 		}
 
-		if ( isset( $_POST['dcd_decay_threshold'] ) ) {
-			update_option( 'dcd_decay_threshold', intval( $_POST['dcd_decay_threshold'] ) );
+		if ( isset( $_POST['dragoncontentdecay_decay_threshold'] ) ) {
+			update_option( 'dragoncontentdecay_decay_threshold', intval( $_POST['dragoncontentdecay_decay_threshold'] ) );
 		}
 
-		if ( isset( $_POST['dcd_comparison_period'] ) ) {
-			update_option( 'dcd_comparison_period', intval( $_POST['dcd_comparison_period'] ) );
+		if ( isset( $_POST['dragoncontentdecay_comparison_period'] ) ) {
+			update_option( 'dragoncontentdecay_comparison_period', intval( $_POST['dragoncontentdecay_comparison_period'] ) );
 		}
 
-		if ( isset( $_POST['dcd_email_frequency'] ) ) {
-			update_option( 'dcd_email_frequency', sanitize_text_field( wp_unslash( $_POST['dcd_email_frequency'] ) ) );
+		if ( isset( $_POST['dragoncontentdecay_email_frequency'] ) ) {
+			update_option( 'dragoncontentdecay_email_frequency', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_email_frequency'] ) ) );
 		}
 
-		if ( isset( $_POST['dcd_post_types'] ) ) {
-			$post_types = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['dcd_post_types'] ) );
-			update_option( 'dcd_post_types', $post_types );
+		if ( isset( $_POST['dragoncontentdecay_post_types'] ) ) {
+			$post_types = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['dragoncontentdecay_post_types'] ) );
+			update_option( 'dragoncontentdecay_post_types', $post_types );
 		}
 
-		add_settings_error( 'dcd_settings', 'settings_saved', __( 'Settings saved.', 'dragon-content-decay' ), 'success' );
+		add_settings_error( 'dragoncontentdecay_settings', 'settings_saved', __( 'Settings saved.', 'dragon-content-decay' ), 'success' );
 	}
 
 	/**
@@ -300,7 +300,7 @@ class Admin {
 	 * Add decay column to posts list
 	 */
 	public function add_decay_column( array $columns ): array {
-		$columns['dcd_decay'] = __( 'Decay', 'dragon-content-decay' );
+		$columns['dragoncontentdecay_decay'] = __( 'Decay', 'dragon-content-decay' );
 		return $columns;
 	}
 
@@ -308,7 +308,7 @@ class Admin {
 	 * Render decay column content
 	 */
 	public function render_decay_column( string $column, int $post_id ): void {
-		if ( 'dcd_decay' !== $column ) {
+		if ( 'dragoncontentdecay_decay' !== $column ) {
 			return;
 		}
 
@@ -347,7 +347,7 @@ class Admin {
 	 * Make decay column sortable
 	 */
 	public function make_decay_column_sortable( array $columns ): array {
-		$columns['dcd_decay'] = 'dcd_decay';
+		$columns['dragoncontentdecay_decay'] = 'dragoncontentdecay_decay';
 		return $columns;
 	}
 
@@ -359,7 +359,7 @@ class Admin {
 			return;
 		}
 
-		if ( 'dcd_decay' !== $query->get( 'orderby' ) ) {
+		if ( 'dragoncontentdecay_decay' !== $query->get( 'orderby' ) ) {
 			return;
 		}
 

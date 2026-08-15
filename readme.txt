@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.0
+Stable tag: 1.0.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,12 @@ Data syncs automatically once per day. You can also manually sync from the dashb
 3. Posts list with decay column
 
 == Changelog ==
+
+= 1.0.2 =
+* Fix: the GA4 Property ID and Google connection are now carried safely on update (they could be lost on a deactivate then reactivate cycle).
+
+= 1.0.1 =
+* Renamed all option, hook, function and constant prefixes to the unique `dragoncontentdecay_` / `DRAGONCONTENTDECAY_` prefix. Existing settings, the Google connection and sync/digest schedules are migrated automatically on update; cached analytics data is unaffected.
 
 = 1.0.0 =
 * Initial release

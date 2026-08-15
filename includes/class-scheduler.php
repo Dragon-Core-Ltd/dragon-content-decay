@@ -23,7 +23,7 @@ class Scheduler {
 	/**
 	 * Cron hook name
 	 */
-	public const CRON_HOOK = 'dcd_daily_sync';
+	public const CRON_HOOK = 'dragoncontentdecay_daily_sync';
 
 	/**
 	 * Constructor
@@ -38,7 +38,7 @@ class Scheduler {
 	 */
 	private function init_hooks(): void {
 		add_action( self::CRON_HOOK, array( $this, 'run_daily_sync' ) );
-		add_action( 'wp_ajax_dcd_manual_sync', array( $this, 'handle_manual_sync' ) );
+		add_action( 'wp_ajax_dragoncontentdecay_manual_sync', array( $this, 'handle_manual_sync' ) );
 	}
 
 	/**
@@ -52,7 +52,7 @@ class Scheduler {
 	 * Handle manual sync request (AJAX)
 	 */
 	public function handle_manual_sync(): void {
-		check_ajax_referer( 'dcd_admin_nonce', 'nonce' );
+		check_ajax_referer( 'dragoncontentdecay_admin_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'dragon-content-decay' ) ) );
@@ -95,8 +95,8 @@ class Scheduler {
 		error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" );
 
 		// Update last sync time
-		update_option( 'dcd_last_sync', time() );
-		update_option( 'dcd_last_sync_count', $analyzed );
+		update_option( 'dragoncontentdecay_last_sync', time() );
+		update_option( 'dragoncontentdecay_last_sync_count', $analyzed );
 
 		return array(
 			'synced'   => $analyzed,
@@ -110,8 +110,8 @@ class Scheduler {
 	 * @return array
 	 */
 	public function get_last_sync_info(): array {
-		$timestamp = get_option( 'dcd_last_sync', 0 );
-		$count     = get_option( 'dcd_last_sync_count', 0 );
+		$timestamp = get_option( 'dragoncontentdecay_last_sync', 0 );
+		$count     = get_option( 'dragoncontentdecay_last_sync_count', 0 );
 
 		return array(
 			'timestamp' => $timestamp,
@@ -141,7 +141,7 @@ class Scheduler {
 	 * @return bool
 	 */
 	public function is_syncing(): bool {
-		return (bool) get_transient( 'dcd_sync_in_progress' );
+		return (bool) get_transient( 'dragoncontentdecay_sync_in_progress' );
 	}
 
 	/**

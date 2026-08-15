@@ -40,7 +40,7 @@ class Analyzer {
 	 * @return int Number of posts analyzed
 	 */
 	public function analyze_all(): int {
-		$period_days = (int) get_option( 'dcd_comparison_period', 30 );
+		$period_days = (int) get_option( 'dragoncontentdecay_comparison_period', 30 );
 		$data        = $this->api_ga4->fetch_comparison_data( $period_days );
 
 		if ( empty( $data['current'] ) && empty( $data['previous'] ) ) {
@@ -125,7 +125,7 @@ class Analyzer {
 	 * @return string Trend constant
 	 */
 	public function determine_trend( float $score ): string {
-		$threshold = (int) get_option( 'dcd_decay_threshold', -20 );
+		$threshold = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
 
 		if ( $score <= $threshold ) {
 			return self::TREND_DECAYING;
@@ -148,7 +148,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
-		$threshold    = (int) get_option( 'dcd_decay_threshold', -20 );
+		$threshold    = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
 		$results = $wpdb->get_results(
@@ -213,7 +213,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
-		$threshold    = (int) get_option( 'dcd_decay_threshold', -20 );
+		$threshold    = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
 		$total = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_scores}" );

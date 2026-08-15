@@ -18,12 +18,12 @@ class Notifications {
 	/**
 	 * Weekly digest cron hook
 	 */
-	public const WEEKLY_HOOK = 'dcd_weekly_digest';
+	public const WEEKLY_HOOK = 'dragoncontentdecay_weekly_digest';
 
 	/**
 	 * Monthly digest cron hook
 	 */
-	public const MONTHLY_HOOK = 'dcd_monthly_digest';
+	public const MONTHLY_HOOK = 'dragoncontentdecay_monthly_digest';
 
 	/**
 	 * Constructor
@@ -40,14 +40,14 @@ class Notifications {
 		add_action( self::MONTHLY_HOOK, array( $this, 'send_monthly_digest' ) );
 
 		// Reschedule digests when frequency changes
-		add_action( 'update_option_dcd_email_frequency', array( $this, 'reschedule_digests' ), 10, 2 );
+		add_action( 'update_option_dragoncontentdecay_email_frequency', array( $this, 'reschedule_digests' ), 10, 2 );
 	}
 
 	/**
 	 * Send weekly digest email
 	 */
 	public function send_weekly_digest(): void {
-		if ( 'weekly' !== get_option( 'dcd_email_frequency', 'off' ) ) {
+		if ( 'weekly' !== get_option( 'dragoncontentdecay_email_frequency', 'off' ) ) {
 			return;
 		}
 
@@ -58,7 +58,7 @@ class Notifications {
 	 * Send monthly digest email
 	 */
 	public function send_monthly_digest(): void {
-		if ( 'monthly' !== get_option( 'dcd_email_frequency', 'off' ) ) {
+		if ( 'monthly' !== get_option( 'dragoncontentdecay_email_frequency', 'off' ) ) {
 			return;
 		}
 

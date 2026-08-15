@@ -32,7 +32,7 @@ class OAuth {
 	/**
 	 * Option name for storing tokens
 	 */
-	private const TOKEN_OPTION = 'dcd_google_tokens';
+	private const TOKEN_OPTION = 'dragoncontentdecay_google_tokens';
 
 	/**
 	 * Constructor
@@ -45,8 +45,8 @@ class OAuth {
 	 * Initialize Google Client
 	 */
 	private function init_client(): void {
-		$client_id     = get_option( 'dcd_google_client_id', '' );
-		$client_secret = get_option( 'dcd_google_client_secret', '' );
+		$client_id     = get_option( 'dragoncontentdecay_google_client_id', '' );
+		$client_secret = get_option( 'dragoncontentdecay_google_client_secret', '' );
 
 		if ( empty( $client_id ) || empty( $client_secret ) ) {
 			return;

@@ -57,8 +57,8 @@ class API_GA4 {
 			return null;
 		}
 
-		$client_id     = get_option( 'dcd_google_client_id', '' );
-		$client_secret = get_option( 'dcd_google_client_secret', '' );
+		$client_id     = get_option( 'dragoncontentdecay_google_client_id', '' );
+		$client_secret = get_option( 'dragoncontentdecay_google_client_secret', '' );
 		$refresh_token = $this->oauth->get_refresh_token();
 
 		if ( empty( $client_id ) || empty( $client_secret ) || empty( $refresh_token ) ) {
@@ -94,7 +94,7 @@ class API_GA4 {
 	 * Get property ID
 	 */
 	private function get_property_id(): string {
-		return get_option( 'dcd_ga4_property_id', '' );
+		return get_option( 'dragoncontentdecay_ga4_property_id', '' );
 	}
 
 	/**
@@ -111,7 +111,7 @@ class API_GA4 {
 		}
 
 		// Use transient cache to avoid hitting API limits
-		$cache_key = 'dcd_pageviews_' . md5( $property_id . $start_date . $end_date );
+		$cache_key = 'dragoncontentdecay_pageviews_' . md5( $property_id . $start_date . $end_date );
 		$cached    = get_transient( $cache_key );
 		if ( false !== $cached ) {
 			return $cached;
@@ -206,7 +206,7 @@ class API_GA4 {
 		$path = trim( $path, '/' );
 
 		// Try to find post by slug
-		$post = get_page_by_path( $path, OBJECT, get_option( 'dcd_post_types', array( 'post' ) ) );
+		$post = get_page_by_path( $path, OBJECT, get_option( 'dragoncontentdecay_post_types', array( 'post' ) ) );
 
 		if ( $post ) {
 			return $post->ID;

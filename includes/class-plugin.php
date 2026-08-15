@@ -58,7 +58,66 @@ class Plugin {
 	 * Constructor
 	 */
 	private function __construct() {
+		self::migrate_legacy_prefix();
 		$this->init_components();
+	}
+
+	/**
+	 * Move options and scheduled events off the pre-1.0.1 three-letter (dcd_)
+	 * prefix.
+	 *
+	 * The prefix was renamed to the namespace-derived `dragoncontentdecay_` to
+	 * satisfy the WordPress.org uniqueness rule. Option values (including the
+	 * stored Google OAuth tokens, so the GA4 connection survives) are carried
+	 * across once, and the sync/digest cron events are re-pointed at the renamed
+	 * hooks. The analytics and scores tables keep their names (matched by exact
+	 * name), so cached report data is untouched.
+	 */
+	private static function migrate_legacy_prefix(): void {
+		// db_version is a schema marker managed by activation/create_tables, not
+		// user data; just drop the legacy copy.
+		delete_option( 'dcd_db_version' );
+
+		$options = array(
+			'comparison_period',
+			'decay_threshold',
+			'email_frequency',
+			'ga4_property_id',
+			'google_client_id',
+			'google_client_secret',
+			'google_tokens',
+			'last_sync',
+			'last_sync_count',
+			'post_types',
+		);
+
+		// Copy each legacy value onto the new name, then remove the legacy copy —
+		// per option, so the delete only ever runs after a successful copy. (A
+		// single shared guard would delete on a deactivate/reactivate cycle, where
+		// activation re-stamps the new db_version before the copy could run.)
+		foreach ( $options as $name ) {
+			$legacy = get_option( 'dcd_' . $name, null );
+			if ( null !== $legacy ) {
+				update_option( 'dragoncontentdecay_' . $name, $legacy );
+				delete_option( 'dcd_' . $name );
+			}
+		}
+
+		$crons = array(
+			'dcd_daily_sync'     => 'dragoncontentdecay_daily_sync',
+			'dcd_weekly_digest'  => 'dragoncontentdecay_weekly_digest',
+			'dcd_monthly_digest' => 'dragoncontentdecay_monthly_digest',
+		);
+		foreach ( $crons as $old => $new ) {
+			$timestamp = wp_next_scheduled( $old );
+			if ( $timestamp ) {
+				$recurrence = wp_get_schedule( $old );
+				wp_unschedule_event( $timestamp, $old );
+				if ( $recurrence && ! wp_next_scheduled( $new ) ) {
+					wp_schedule_event( time(), $recurrence, $new );
+				}
+			}
+		}
 	}
 
 	/**
@@ -81,8 +140,8 @@ class Plugin {
 		self::set_default_options();
 
 		// Schedule cron events
-		if ( ! wp_next_scheduled( 'dcd_daily_sync' ) ) {
-			wp_schedule_event( time(), 'daily', 'dcd_daily_sync' );
+		if ( ! wp_next_scheduled( 'dragoncontentdecay_daily_sync' ) ) {
+			wp_schedule_event( time(), 'daily', 'dragoncontentdecay_daily_sync' );
 		}
 
 		// Flush rewrite rules
@@ -94,7 +153,7 @@ class Plugin {
 	 */
 	public static function deactivate(): void {
 		// Clear scheduled events
-		wp_clear_scheduled_hook( 'dcd_daily_sync' );
+		wp_clear_scheduled_hook( 'dragoncontentdecay_daily_sync' );
 
 		// Flush rewrite rules
 		flush_rewrite_rules();
@@ -140,7 +199,7 @@ class Plugin {
 		dbDelta( $sql_scores );
 
 		// Store database version
-		update_option( 'dcd_db_version', DCD_VERSION );
+		update_option( 'dragoncontentdecay_db_version', DRAGONCONTENTDECAY_VERSION );
 	}
 
 	/**
@@ -148,13 +207,13 @@ class Plugin {
 	 */
 	private static function set_default_options(): void {
 		$defaults = array(
-			'dcd_decay_threshold'      => -20,
-			'dcd_comparison_period'    => 30,
-			'dcd_email_frequency'      => 'off',
-			'dcd_post_types'           => array( 'post' ),
-			'dcd_ga4_property_id'      => '',
-			'dcd_google_client_id'     => '',
-			'dcd_google_client_secret' => '',
+			'dragoncontentdecay_decay_threshold'      => -20,
+			'dragoncontentdecay_comparison_period'    => 30,
+			'dragoncontentdecay_email_frequency'      => 'off',
+			'dragoncontentdecay_post_types'           => array( 'post' ),
+			'dragoncontentdecay_ga4_property_id'      => '',
+			'dragoncontentdecay_google_client_id'     => '',
+			'dragoncontentdecay_google_client_secret' => '',
 		);
 
 		foreach ( $defaults as $option => $value ) {
