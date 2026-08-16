@@ -90,9 +90,16 @@ class Admin {
 		}
 
 		wp_enqueue_style(
+			'dragon-content-decay-dragon-ui',
+			DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/css/dragon-ui.css',
+			array(),
+			DRAGONCONTENTDECAY_VERSION
+		);
+
+		wp_enqueue_style(
 			'dcd-admin',
 			DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/css/admin.css',
-			array(),
+			array( 'dragon-content-decay-dragon-ui' ),
 			DRAGONCONTENTDECAY_VERSION
 		);
 

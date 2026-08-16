@@ -9,8 +9,8 @@ defined( 'ABSPATH' ) || exit;
 
 // Template variables are provided by Admin::render_dashboard_page().
 ?>
-<div class="wrap dcd-dashboard">
-	<h1 class="wp-heading-inline">
+<div class="wrap dragon-ui dcd-dashboard">
+	<h1 class="dragon-title wp-heading-inline"><span class="dragon-mark" aria-hidden="true"></span>
 		<?php esc_html_e( 'Dragon Content Decay', 'dragon-content-decay' ); ?>
 	</h1>
 

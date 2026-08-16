@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,9 @@ Data syncs automatically once per day. You can also manually sync from the dashb
 3. Posts list with decay column
 
 == Changelog ==
+
+= 1.0.3 =
+* New look: the Dragon design system arrives — a consistent Dragon Core header, cleaner tables, and unified status colours. Purely visual; no behaviour changes.
 
 = 1.0.2 =
 * Fix: the GA4 Property ID and Google connection are now carried safely on update (they could be lost on a deactivate then reactivate cycle).
