@@ -24,14 +24,16 @@ defined( 'ABSPATH' ) || exit;
 	</nav>
 
 	<?php if ( ! $is_connected ) : ?>
-		<div class="dcd-notice dcd-notice-warning">
-			<p>
-				<strong><?php esc_html_e( 'Not Connected', 'dragon-content-decay' ); ?></strong>
-				<?php esc_html_e( 'Connect to Google Analytics to start tracking content decay.', 'dragon-content-decay' ); ?>
-				<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>" class="button button-primary">
-					<?php esc_html_e( 'Connect Now', 'dragon-content-decay' ); ?>
-				</a>
-			</p>
+		<div class="dragon-card dragon-firstrun" style="max-width:640px;margin:12px 0;">
+			<h2 style="margin-top:0;"><?php esc_html_e( 'Get set up in two minutes', 'dragon-content-decay' ); ?></h2>
+			<ol style="margin:0 0 12px 18px;">
+				<li><?php esc_html_e( 'Connect your Google account — the plugin only requests read access to Analytics.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Pick the GA4 property for this site.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'The first scan compares recent traffic to your baseline and flags the posts losing ground.', 'dragon-content-decay' ); ?></li>
+			</ol>
+			<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>" class="button button-primary">
+				<?php esc_html_e( 'Connect Google Analytics', 'dragon-content-decay' ); ?>
+			</a>
 		</div>
 	<?php else : ?>
 		<!-- Summary Cards -->

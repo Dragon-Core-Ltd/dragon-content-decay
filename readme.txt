@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.3
+Stable tag: 1.0.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -85,6 +85,11 @@ Data syncs automatically once per day. You can also manually sync from the dashb
 3. Posts list with decay column
 
 == Changelog ==
+
+= 1.0.4 =
+* Fixed: the Google Analytics data client library was missing from the plugin package, so connecting and running reports could fail with a fatal error. It is now bundled correctly.
+* Under the hood: the bundled Google libraries were slimmed from ~170MB to ~17MB (faster install and updates) and updated to close published security advisories in HTTP/JWT dependencies.
+* New: a clearer get-started panel when Google Analytics is not yet connected.
 
 = 1.0.3 =
 * New look: the Dragon design system arrives — a consistent Dragon Core header, cleaner tables, and unified status colours. Purely visual; no behaviour changes.
