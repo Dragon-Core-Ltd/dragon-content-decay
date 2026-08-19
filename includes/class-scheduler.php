@@ -81,7 +81,9 @@ class Scheduler {
 	public function sync(): array {
 		// Log start
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-		error_log( 'DCD: Starting data sync at ' . current_time( 'mysql' ) );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'DCD: Starting data sync at ' . current_time( 'mysql' ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+		}
 
 		$start_time = microtime( true );
 
@@ -92,7 +94,9 @@ class Scheduler {
 
 		// Log completion
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-		error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" );
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+		}
 
 		// Update last sync time
 		update_option( 'dragoncontentdecay_last_sync', time() );

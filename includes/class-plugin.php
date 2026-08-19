@@ -7,6 +7,8 @@
 
 namespace DragonContentDecay;
 
+defined( 'ABSPATH' ) || exit;
+
 class Plugin {
 
 	/**

@@ -73,7 +73,9 @@ class OAuth {
 			}
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-			error_log( 'DCD OAuth Error: ' . $e->getMessage() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD OAuth Error: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
 			$this->client = null;
 		}
 	}
@@ -109,7 +111,9 @@ class OAuth {
 
 			if ( isset( $tokens['error'] ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-				error_log( 'DCD OAuth Error: ' . $tokens['error_description'] ?? $tokens['error'] );
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'DCD OAuth Error: ' . $tokens['error_description'] ?? $tokens['error'] ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				}
 				return false;
 			}
 
@@ -119,7 +123,9 @@ class OAuth {
 			return true;
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-			error_log( 'DCD OAuth Callback Error: ' . $e->getMessage() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD OAuth Callback Error: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
 			return false;
 		}
 	}
@@ -142,7 +148,9 @@ class OAuth {
 
 			if ( isset( $tokens['error'] ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-				error_log( 'DCD Token Refresh Error: ' . $tokens['error_description'] ?? $tokens['error'] );
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'DCD Token Refresh Error: ' . $tokens['error_description'] ?? $tokens['error'] ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				}
 				return false;
 			}
 
@@ -157,7 +165,9 @@ class OAuth {
 			return true;
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-			error_log( 'DCD Token Refresh Error: ' . $e->getMessage() );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD Token Refresh Error: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
 			return false;
 		}
 	}
@@ -173,7 +183,9 @@ class OAuth {
 
 		if ( false === $encrypted ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-			error_log( 'DCD: Encryption failed' );
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD: Encryption failed' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
 			return '';
 		}
 

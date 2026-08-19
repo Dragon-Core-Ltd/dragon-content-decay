@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 8.0
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -38,6 +38,35 @@ Search engines favor fresh, updated content. Posts that haven't been refreshed m
 * Keep content accurate and relevant
 * Maximize ROI from existing content
 * Prioritize your content calendar
+
+== External services ==
+
+This plugin connects to Google Analytics 4 to read the traffic figures it needs
+to detect declining content. It is not usable without that connection, and you
+supply your own Google Cloud OAuth credentials — the plugin does not proxy
+anything through Dragon Core.
+
+Two kinds of request are made to Google:
+
+* **Signing in.** When you connect your account, the plugin performs a standard
+  OAuth handshake with Google using your client ID and secret, and stores the
+  resulting access and refresh tokens in your own database. Tokens are refreshed
+  automatically when they expire.
+* **Reading analytics.** When you sync — on the schedule you configure, or when
+  you press Sync now — the plugin calls the Google Analytics Data API for the
+  property you selected. Each request contains your GA4 property ID, a date
+  range, and the names of the metrics and dimensions being requested. Google
+  returns the page paths and traffic figures already recorded in your own
+  Analytics property.
+
+Beyond the credentials themselves — your client ID and secret, the resulting
+tokens, and your site's admin URL as the OAuth redirect address — no post
+content, site content or WordPress user data is sent to Google by this plugin,
+and nothing is sent to Dragon Core.
+
+Google terms of service: https://policies.google.com/terms
+Google privacy policy: https://policies.google.com/privacy
+Google APIs user data policy: https://developers.google.com/terms/api-services-user-data-policy
 
 == Installation ==
 
@@ -78,13 +107,12 @@ Yes! You can select which post types to track in the settings.
 
 Data syncs automatically once per day. You can also manually sync from the dashboard.
 
-== Screenshots ==
-
-1. Main dashboard showing content performance overview
-2. Settings page with Google Analytics configuration
-3. Posts list with decay column
-
 == Changelog ==
+
+= 1.0.5 =
+* Documentation: full external-services disclosure for the Google Analytics connection.
+* New: "Delete data on uninstall" checkbox in settings.
+* Fix: debug messages no longer written to the server error log unless WP_DEBUG is on.
 
 = 1.0.4 =
 * Fixed: the Google Analytics data client library was missing from the plugin package, so connecting and running reports could fail with a fatal error. It is now bundled correctly.

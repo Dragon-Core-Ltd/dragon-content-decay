@@ -249,6 +249,8 @@ class Admin {
 			update_option( 'dragoncontentdecay_post_types', $post_types );
 		}
 
+		update_option( 'dragoncontentdecay_delete_data_on_uninstall', empty( $_POST['dragoncontentdecay_delete_data_on_uninstall'] ) ? 0 : 1 );
+
 		add_settings_error( 'dragoncontentdecay_settings', 'settings_saved', __( 'Settings saved.', 'dragon-content-decay' ), 'success' );
 	}
 

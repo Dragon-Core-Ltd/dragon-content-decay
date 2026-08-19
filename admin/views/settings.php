@@ -242,6 +242,19 @@ defined( 'ABSPATH' ) || exit;
 			</table>
 		</div>
 
+		<h2><?php esc_html_e( 'Uninstall', 'dragon-content-decay' ); ?></h2>
+		<table class="form-table">
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Delete data on uninstall', 'dragon-content-decay' ); ?></th>
+				<td>
+					<label>
+						<input type="checkbox" name="dragoncontentdecay_delete_data_on_uninstall" value="1" <?php checked( get_option( 'dragoncontentdecay_delete_data_on_uninstall' ) ); ?> />
+						<?php esc_html_e( 'Remove settings, Google credentials and analytics history when the plugin is deleted. Leave off to keep them through a reinstall.', 'dragon-content-decay' ); ?>
+					</label>
+				</td>
+			</tr>
+		</table>
+
 		<?php submit_button( __( 'Save Settings', 'dragon-content-decay' ) ); ?>
 	</form>
 

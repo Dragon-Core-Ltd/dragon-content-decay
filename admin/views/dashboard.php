@@ -101,6 +101,7 @@ defined( 'ABSPATH' ) || exit;
 			<div class="dcd-table-header">
 				<h2><?php esc_html_e( 'Content Performance', 'dragon-content-decay' ); ?></h2>
 				<div class="dcd-filters">
+					<label class="screen-reader-text" for="dcd-filter-trend"><?php esc_html_e( 'Filter by trend', 'dragon-content-decay' ); ?></label>
 					<select id="dcd-filter-trend" class="dcd-filter">
 						<option value=""><?php esc_html_e( 'All Trends', 'dragon-content-decay' ); ?></option>
 						<option value="decaying"><?php esc_html_e( 'Decaying', 'dragon-content-decay' ); ?></option>
