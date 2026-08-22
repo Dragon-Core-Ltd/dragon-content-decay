@@ -70,7 +70,7 @@ defined( 'ABSPATH' ) || exit;
 								name="dragoncontentdecay_google_client_id"
 								value="<?php echo esc_attr( $settings['client_id'] ); ?>"
 								class="regular-text"
-								placeholder="123456789-abc123.apps.googleusercontent.com">
+								placeholder="<?php esc_attr_e( 'Paste the client ID from your Google Cloud OAuth credentials', 'dragon-content-decay' ); ?>">
 					</td>
 				</tr>
 				<tr>

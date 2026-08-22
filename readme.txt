@@ -1,10 +1,10 @@
 === Dragon Content Decay ===
-Contributors: dragoncore
+Contributors: dragoncoreltd
 Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,11 @@ Yes! You can select which post types to track in the settings.
 Data syncs automatically once per day. You can also manually sync from the dashboard.
 
 == Changelog ==
+
+= 1.0.6 =
+* Compatibility: tested up to WordPress 7.1.
+* Fix: the first-run guidance panel now shows its intended styling.
+* Housekeeping: corrected the contributor name in the plugin readme.
 
 = 1.0.5 =
 * Documentation: full external-services disclosure for the Google Analytics connection.
