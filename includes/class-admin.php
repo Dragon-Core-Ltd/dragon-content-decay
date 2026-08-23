@@ -16,6 +16,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Admin {
 
 	/**
+	 * Placeholder shown in the client-secret field when a secret is stored, so
+	 * the real value never reaches the page. Submitting it unchanged keeps the
+	 * stored secret.
+	 */
+	private const SECRET_MASK = '••••••••';
+
+	/**
 	 * OAuth instance
 	 */
 	private OAuth $oauth;
@@ -197,7 +204,8 @@ class Admin {
 	private function get_settings(): array {
 		return array(
 			'client_id'         => get_option( 'dragoncontentdecay_google_client_id', '' ),
-			'client_secret'     => get_option( 'dragoncontentdecay_google_client_secret', '' ),
+			// Never expose the real secret to the page; show a fixed mask when set.
+			'client_secret'     => OAuth::has_client_secret() ? self::SECRET_MASK : '',
 			'ga4_property_id'   => get_option( 'dragoncontentdecay_ga4_property_id', '' ),
 			'decay_threshold'   => get_option( 'dragoncontentdecay_decay_threshold', -20 ),
 			'comparison_period' => get_option( 'dragoncontentdecay_comparison_period', 30 ),
@@ -225,7 +233,12 @@ class Admin {
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_google_client_secret'] ) ) {
-			update_option( 'dragoncontentdecay_google_client_secret', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_google_client_secret'] ) ) );
+			$posted_secret = sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_google_client_secret'] ) );
+			// The mask is what an unchanged field submits; only overwrite when the
+			// admin actually entered a new value. The secret is stored encrypted.
+			if ( self::SECRET_MASK !== $posted_secret ) {
+				OAuth::set_client_secret( $posted_secret );
+			}
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_ga4_property_id'] ) ) {
@@ -272,8 +285,18 @@ class Admin {
 			exit;
 			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback request originates from Google and cannot carry a WordPress nonce; page is capability-gated.
 		} elseif ( 'callback' === $action && isset( $_GET['code'] ) ) {
-			// Handle OAuth callback
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback request originates from Google and cannot carry a WordPress nonce; page is capability-gated.
+			// The callback carries no WP nonce (it comes from Google), so the CSRF
+			// defence is the OAuth state we set when building the auth URL. Verify
+			// it before accepting the code, or an attacker could bind this site to
+			// their own Google account.
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- CSRF is enforced via the OAuth state token verified here.
+			$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+			if ( ! OAuth::verify_state( $state ) ) {
+				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=state' ) );
+				exit;
+			}
+
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- CSRF is enforced via the OAuth state token verified above.
 			$code = sanitize_text_field( wp_unslash( $_GET['code'] ) );
 			if ( $this->oauth->handle_callback( $code ) ) {
 				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&connected=1' ) );

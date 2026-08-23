@@ -46,7 +46,7 @@ class OAuth {
 	 */
 	private function init_client(): void {
 		$client_id     = get_option( 'dragoncontentdecay_google_client_id', '' );
-		$client_secret = get_option( 'dragoncontentdecay_google_client_secret', '' );
+		$client_secret = self::get_client_secret();
 
 		if ( empty( $client_id ) || empty( $client_secret ) ) {
 			return;
@@ -88,14 +88,95 @@ class OAuth {
 	}
 
 	/**
-	 * Get authorization URL
+	 * Option storing the encrypted Google client secret.
+	 */
+	private const SECRET_OPTION = 'dragoncontentdecay_google_client_secret';
+
+	/**
+	 * Marker prefixing an encrypted client secret.
+	 */
+	private const SECRET_PREFIX = 'dcdenc:';
+
+	/**
+	 * Transient key holding the pending OAuth state token, per user.
+	 */
+	private const STATE_TRANSIENT = 'dragoncontentdecay_oauth_state_';
+
+	/**
+	 * The decrypted Google client secret, migrating any legacy plaintext value.
+	 *
+	 * @return string
+	 */
+	public static function get_client_secret(): string {
+		$stored = (string) get_option( self::SECRET_OPTION, '' );
+		if ( '' === $stored ) {
+			return '';
+		}
+
+		if ( str_starts_with( $stored, self::SECRET_PREFIX ) ) {
+			$plain = self::decrypt( substr( $stored, strlen( self::SECRET_PREFIX ) ) );
+			return null !== $plain ? $plain : '';
+		}
+
+		// Legacy plaintext: re-store encrypted, keeping the value.
+		self::set_client_secret( $stored );
+		return $stored;
+	}
+
+	/**
+	 * Store the Google client secret encrypted at rest (or clear it).
+	 *
+	 * @param string $plain Plaintext secret, or '' to clear.
+	 */
+	public static function set_client_secret( string $plain ): void {
+		if ( '' === $plain ) {
+			update_option( self::SECRET_OPTION, '', false );
+			return;
+		}
+
+		update_option( self::SECRET_OPTION, self::SECRET_PREFIX . self::encrypt( $plain ), false );
+	}
+
+	/**
+	 * Whether a client secret is stored.
+	 *
+	 * @return bool
+	 */
+	public static function has_client_secret(): bool {
+		return '' !== (string) get_option( self::SECRET_OPTION, '' );
+	}
+
+	/**
+	 * Get authorization URL, binding it to a fresh CSRF state token.
 	 */
 	public function get_auth_url(): ?string {
 		if ( ! $this->client ) {
 			return null;
 		}
 
+		$state = wp_generate_password( 32, false, false );
+		set_transient( self::STATE_TRANSIENT . get_current_user_id(), $state, 15 * MINUTE_IN_SECONDS );
+		$this->client->setState( $state );
+
 		return $this->client->createAuthUrl();
+	}
+
+	/**
+	 * Verify and consume the OAuth state returned on the callback.
+	 *
+	 * Without this an attacker can CSRF a logged-in admin into completing the
+	 * flow with the attacker's authorization code, binding the site to the
+	 * attacker's Google account.
+	 *
+	 * @param string $provided State value from the callback request.
+	 * @return bool
+	 */
+	public static function verify_state( string $provided ): bool {
+		$key      = self::STATE_TRANSIENT . get_current_user_id();
+		$expected = get_transient( $key );
+		delete_transient( $key );
+
+		return is_string( $expected ) && '' !== $expected && hash_equals( $expected, $provided );
 	}
 
 	/**
@@ -175,7 +256,7 @@ class OAuth {
 	/**
 	 * Encrypt data using WordPress auth key
 	 */
-	private function encrypt( string $data ): string {
+	private static function encrypt( string $data ): string {
 		$key = hash( 'sha256', wp_salt( 'auth' ), true );
 		$iv  = openssl_random_pseudo_bytes( 16 );
 
@@ -197,7 +278,7 @@ class OAuth {
 	/**
 	 * Decrypt data using WordPress auth key
 	 */
-	private function decrypt( string $data ): ?string {
+	private static function decrypt( string $data ): ?string {
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Binary-safe retrieval of AES-encrypted OAuth tokens, not code obfuscation.
 		$data = base64_decode( $data, true );
 
@@ -219,7 +300,7 @@ class OAuth {
 	 */
 	private function store_tokens( array $tokens ): void {
 		$json      = wp_json_encode( $tokens );
-		$encrypted = $this->encrypt( $json );
+		$encrypted = self::encrypt( $json );
 
 		if ( ! empty( $encrypted ) ) {
 			update_option( self::TOKEN_OPTION, $encrypted );
@@ -236,7 +317,7 @@ class OAuth {
 			return null;
 		}
 
-		$json = $this->decrypt( $encrypted );
+		$json = self::decrypt( $encrypted );
 
 		if ( null === $json ) {
 			// Migration: try to read old base64-only format
