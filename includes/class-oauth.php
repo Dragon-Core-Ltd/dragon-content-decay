@@ -23,11 +23,32 @@ class OAuth {
 	private ?Client $client = null;
 
 	/**
-	 * OAuth scopes required
+	 * GA4 (always requested) and Search Console (optional) OAuth scopes.
 	 */
-	private const SCOPES = array(
-		'https://www.googleapis.com/auth/analytics.readonly',
-	);
+	public const SCOPE_ANALYTICS     = 'https://www.googleapis.com/auth/analytics.readonly';
+	public const SCOPE_SEARCHCONSOLE = 'https://www.googleapis.com/auth/webmasters.readonly';
+
+	/**
+	 * Option storing the space-separated scopes Google actually granted, so an
+	 * existing GA4-only connection can be told to reconnect for Search Console.
+	 */
+	private const GRANTED_SCOPES_OPTION = 'dragoncontentdecay_google_granted_scopes';
+
+	/**
+	 * The scopes to request. The Search Console scope is only added when the user
+	 * opts into GSC, so GA4-only sites are never forced to re-consent for it.
+	 *
+	 * @return string[]
+	 */
+	private static function get_scopes(): array {
+		$scopes = array( self::SCOPE_ANALYTICS );
+
+		if ( get_option( 'dragoncontentdecay_gsc_enabled' ) ) {
+			$scopes[] = self::SCOPE_SEARCHCONSOLE;
+		}
+
+		return $scopes;
+	}
 
 	/**
 	 * Option name for storing tokens
@@ -57,7 +78,7 @@ class OAuth {
 			$this->client->setClientId( $client_id );
 			$this->client->setClientSecret( $client_secret );
 			$this->client->setRedirectUri( $this->get_redirect_uri() );
-			$this->client->setScopes( self::SCOPES );
+			$this->client->setScopes( self::get_scopes() );
 			$this->client->setAccessType( 'offline' );
 			$this->client->setPrompt( 'consent' );
 
@@ -205,6 +226,7 @@ class OAuth {
 			}
 
 			$this->store_tokens( $tokens );
+			$this->store_granted_scopes( $tokens );
 			$this->client->setAccessToken( $tokens );
 
 			return true;
@@ -257,6 +279,51 @@ class OAuth {
 			}
 			return false;
 		}
+	}
+
+	/**
+	 * Record the scopes Google actually granted (space-separated 'scope' field),
+	 * so the UI can detect a GA4-only connection that needs reconnecting for GSC.
+	 *
+	 * @param array $tokens Token response.
+	 */
+	private function store_granted_scopes( array $tokens ): void {
+		// Prefer the scopes Google actually granted (the token endpoint's 'scope'
+		// field). If it is ever absent, fall back to the scopes we just requested —
+		// so a successful connect always records *something*, and the Search Console
+		// state can never get stuck "not granted" forever when 'scope' is omitted.
+		$scopes = ( isset( $tokens['scope'] ) && is_string( $tokens['scope'] ) && '' !== trim( $tokens['scope'] ) )
+			? $tokens['scope']
+			: implode( ' ', self::get_scopes() );
+
+		update_option( self::GRANTED_SCOPES_OPTION, $scopes, false );
+	}
+
+	/**
+	 * Whether a given scope was granted by the current connection.
+	 *
+	 * @param string $scope Scope URL.
+	 * @return bool
+	 */
+	public static function has_scope( string $scope ): bool {
+		$granted = (string) get_option( self::GRANTED_SCOPES_OPTION, '' );
+
+		// Connections made before scope tracking existed only ever had the base
+		// analytics scope; treat anything else as not-yet-granted.
+		if ( '' === $granted ) {
+			return self::SCOPE_ANALYTICS === $scope;
+		}
+
+		return in_array( $scope, preg_split( '/\s+/', trim( $granted ) ), true );
+	}
+
+	/**
+	 * Whether the Search Console scope has been granted.
+	 *
+	 * @return bool
+	 */
+	public static function has_searchconsole_scope(): bool {
+		return self::has_scope( self::SCOPE_SEARCHCONSOLE );
 	}
 
 	/**
@@ -348,6 +415,7 @@ class OAuth {
 		}
 
 		delete_option( self::TOKEN_OPTION );
+		delete_option( self::GRANTED_SCOPES_OPTION );
 		$this->client = null;
 	}
 

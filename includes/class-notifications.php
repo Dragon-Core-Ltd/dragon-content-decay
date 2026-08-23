@@ -71,8 +71,9 @@ class Notifications {
 	 * @param string $type 'weekly' or 'monthly'
 	 */
 	private function send_digest( string $type ): void {
-		$analyzer       = new Analyzer( new API_GA4( new OAuth() ) );
-		$decaying_posts = $analyzer->get_decaying_posts( 10 );
+		$dragoncontentdecay_oauth = new OAuth();
+		$analyzer                 = new Analyzer( new API_GA4( $dragoncontentdecay_oauth ), new API_GSC( $dragoncontentdecay_oauth ) );
+		$decaying_posts           = $analyzer->get_decaying_posts( 10 );
 
 		if ( empty( $decaying_posts ) ) {
 			return;

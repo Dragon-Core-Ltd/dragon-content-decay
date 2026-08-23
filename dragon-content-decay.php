@@ -3,7 +3,7 @@
  * Plugin Name: Dragon Content Decay
  * Plugin URI: https://dragoncore.ltd/plugins/dragon-content-decay
  * Description: Identify content losing traffic over time by connecting to Google Analytics 4. Helps prioritize which posts to refresh.
- * Version: 1.0.9
+ * Version: 1.0.10
  * Author: Dragon Core
  * Author URI: https://dragoncore.ltd
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants
-define( 'DRAGONCONTENTDECAY_VERSION', '1.0.9' );
+define( 'DRAGONCONTENTDECAY_VERSION', '1.0.10' );
 define( 'DRAGONCONTENTDECAY_PLUGIN_FILE', __FILE__ );
 define( 'DRAGONCONTENTDECAY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'DRAGONCONTENTDECAY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -38,6 +38,7 @@ require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-plugin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-admin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-oauth.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-api-ga4.php';
+require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-api-gsc.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-analyzer.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-scheduler.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-notifications.php';

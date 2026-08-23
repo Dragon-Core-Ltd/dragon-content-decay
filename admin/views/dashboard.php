@@ -112,12 +112,16 @@ defined( 'ABSPATH' ) || exit;
 			</div>
 
 			<table class="wp-list-table widefat fixed striped dcd-posts-table">
+				<?php $dragoncontentdecay_gsc_on = (bool) get_option( 'dragoncontentdecay_gsc_enabled', 0 ); ?>
 				<thead>
 					<tr>
 						<th class="column-title" scope="col"><?php esc_html_e( 'Post Title', 'dragon-content-decay' ); ?></th>
 						<th class="column-decay" scope="col"><?php esc_html_e( 'Decay Score', 'dragon-content-decay' ); ?></th>
 						<th class="column-views" scope="col"><?php esc_html_e( 'Current Views', 'dragon-content-decay' ); ?></th>
 						<th class="column-previous" scope="col"><?php esc_html_e( 'Previous Views', 'dragon-content-decay' ); ?></th>
+						<?php if ( $dragoncontentdecay_gsc_on ) : ?>
+						<th class="column-search" scope="col"><?php esc_html_e( 'Search Clicks', 'dragon-content-decay' ); ?></th>
+						<?php endif; ?>
 						<th class="column-trend" scope="col"><?php esc_html_e( 'Trend', 'dragon-content-decay' ); ?></th>
 						<th class="column-updated" scope="col"><?php esc_html_e( 'Last Updated', 'dragon-content-decay' ); ?></th>
 						<th class="column-actions" scope="col"><?php esc_html_e( 'Actions', 'dragon-content-decay' ); ?></th>
@@ -126,7 +130,7 @@ defined( 'ABSPATH' ) || exit;
 				<tbody>
 					<?php if ( empty( $posts_data ) ) : ?>
 						<tr>
-							<td colspan="7" class="dcd-no-data">
+							<td colspan="<?php echo $dragoncontentdecay_gsc_on ? 8 : 7; ?>" class="dcd-no-data">
 								<?php esc_html_e( 'No data available. Click "Sync Now" to fetch analytics data.', 'dragon-content-decay' ); ?>
 							</td>
 						</tr>
@@ -151,6 +155,19 @@ defined( 'ABSPATH' ) || exit;
 								<td class="column-previous">
 									<?php echo esc_html( number_format( $dragoncontentdecay_post['pageviews_previous'] ) ); ?>
 								</td>
+								<?php if ( $dragoncontentdecay_gsc_on ) : ?>
+								<td class="column-search">
+									<?php
+									$dragoncontentdecay_sc = (int) ( $dragoncontentdecay_post['search_clicks_current'] ?? 0 );
+									$dragoncontentdecay_sp = (int) ( $dragoncontentdecay_post['search_clicks_previous'] ?? 0 );
+									$dragoncontentdecay_sd = $dragoncontentdecay_sc - $dragoncontentdecay_sp;
+									echo esc_html( number_format( $dragoncontentdecay_sc ) );
+									if ( 0 !== $dragoncontentdecay_sd ) {
+										echo ' <span class="description">(' . esc_html( ( $dragoncontentdecay_sd > 0 ? '+' : '' ) . number_format( $dragoncontentdecay_sd ) ) . ')</span>';
+									}
+									?>
+								</td>
+								<?php endif; ?>
 								<td class="column-trend">
 									<span class="dcd-trend dcd-trend-<?php echo esc_attr( $dragoncontentdecay_post['trend'] ); ?>">
 										<span class="dashicons dashicons-<?php echo esc_attr( $trend_icons[ $dragoncontentdecay_post['trend'] ] ); ?>"></span>

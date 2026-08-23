@@ -21,6 +21,11 @@ class Analyzer {
 	private API_GA4 $api_ga4;
 
 	/**
+	 * GSC API instance
+	 */
+	private API_GSC $api_gsc;
+
+	/**
 	 * Trend constants
 	 */
 	public const TREND_DECAYING = 'decaying';
@@ -30,8 +35,9 @@ class Analyzer {
 	/**
 	 * Constructor
 	 */
-	public function __construct( API_GA4 $api_ga4 ) {
+	public function __construct( API_GA4 $api_ga4, API_GSC $api_gsc ) {
 		$this->api_ga4 = $api_ga4;
+		$this->api_gsc = $api_gsc;
 	}
 
 	/**
@@ -69,6 +75,9 @@ class Analyzer {
 		// resolver.
 		$slug_map = $this->build_slug_map( $all_paths );
 
+		// Optional Google Search Console signal, keyed by the same URL paths.
+		$gsc = $this->maybe_fetch_gsc( $period_days );
+
 		// Bound the run to a wall-clock budget so a large property (thousands of
 		// multi-segment paths, each needing a precise rewrite lookup) cannot exhaust
 		// PHP's max_execution_time and fatal mid-sync. A rotating cursor guarantees
@@ -101,7 +110,7 @@ class Analyzer {
 			$current_views  = $data['current'][ $path ]['pageviews'] ?? 0;
 			$previous_views = $data['previous'][ $path ]['pageviews'] ?? 0;
 
-			$this->calculate_and_store_score( $post_id, $current_views, $previous_views );
+			$this->calculate_and_store_score( $post_id, $current_views, $previous_views, $this->build_search_metrics( $path, $gsc ) );
 			++$analyzed;
 		}
 
@@ -203,11 +212,22 @@ class Analyzer {
 	}
 
 	/**
-	 * Calculate and store decay score for a single post
+	 * Calculate and store decay score for a single post.
+	 *
+	 * The decay score stays GA4-pageviews based; the optional Search Console
+	 * metrics are stored alongside as a supplementary signal. $wpdb->replace
+	 * rewrites the whole row, so the search_* columns are always written (0 when
+	 * no GSC data applies) rather than being reset to defaults.
+	 *
+	 * @param int        $post_id        Post ID.
+	 * @param int        $current_views  Current-period pageviews.
+	 * @param int        $previous_views Previous-period pageviews.
+	 * @param array|null $search         Optional GSC metrics for this post.
 	 */
-	public function calculate_and_store_score( int $post_id, int $current_views, int $previous_views ): void {
-		$score = $this->calculate_decay_score( $current_views, $previous_views );
-		$trend = $this->determine_trend( $score );
+	public function calculate_and_store_score( int $post_id, int $current_views, int $previous_views, ?array $search = null ): void {
+		$score  = $this->calculate_decay_score( $current_views, $previous_views );
+		$trend  = $this->determine_trend( $score );
+		$search = is_array( $search ) ? $search : array();
 
 		global $wpdb;
 		$table_scores = $wpdb->prefix . 'dcd_scores';
@@ -216,13 +236,63 @@ class Analyzer {
 		$wpdb->replace(
 			$table_scores,
 			array(
-				'post_id'            => $post_id,
-				'decay_score'        => $score,
-				'trend'              => $trend,
-				'pageviews_current'  => $current_views,
-				'pageviews_previous' => $previous_views,
+				'post_id'                     => $post_id,
+				'decay_score'                 => $score,
+				'trend'                       => $trend,
+				'pageviews_current'           => $current_views,
+				'pageviews_previous'          => $previous_views,
+				'search_clicks_current'       => (int) ( $search['clicks_current'] ?? 0 ),
+				'search_clicks_previous'      => (int) ( $search['clicks_previous'] ?? 0 ),
+				'search_impressions_current'  => (int) ( $search['impressions_current'] ?? 0 ),
+				'search_impressions_previous' => (int) ( $search['impressions_previous'] ?? 0 ),
+				'search_position'             => (float) ( $search['position'] ?? 0 ),
 			),
-			array( '%d', '%f', '%s', '%d', '%d' )
+			array( '%d', '%f', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%f' )
+		);
+	}
+
+	/**
+	 * Fetch the Search Console comparison data when GSC is enabled and the scope
+	 * has been granted; otherwise an empty structure.
+	 *
+	 * @param int $period_days Comparison period.
+	 * @return array{current: array<string,array>, previous: array<string,array>}
+	 */
+	private function maybe_fetch_gsc( int $period_days ): array {
+		$empty = array(
+			'current'  => array(),
+			'previous' => array(),
+		);
+
+		if ( ! get_option( 'dragoncontentdecay_gsc_enabled' ) || ! OAuth::has_searchconsole_scope() ) {
+			return $empty;
+		}
+
+		return $this->api_gsc->fetch_comparison_data( $period_days );
+	}
+
+	/**
+	 * Build the per-post Search Console metric set for a path, or null if there is
+	 * no GSC data for it.
+	 *
+	 * @param string $path GA4/GSC URL path.
+	 * @param array  $gsc  GSC comparison data.
+	 * @return array|null
+	 */
+	private function build_search_metrics( string $path, array $gsc ): ?array {
+		$cur  = $gsc['current'][ $path ] ?? null;
+		$prev = $gsc['previous'][ $path ] ?? null;
+
+		if ( null === $cur && null === $prev ) {
+			return null;
+		}
+
+		return array(
+			'clicks_current'       => (int) ( $cur['clicks'] ?? 0 ),
+			'clicks_previous'      => (int) ( $prev['clicks'] ?? 0 ),
+			'impressions_current'  => (int) ( $cur['impressions'] ?? 0 ),
+			'impressions_previous' => (int) ( $prev['impressions'] ?? 0 ),
+			'position'             => (float) ( $cur['position'] ?? 0 ),
 		);
 	}
 

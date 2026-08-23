@@ -212,7 +212,38 @@ class Admin {
 			'email_frequency'   => get_option( 'dragoncontentdecay_email_frequency', 'off' ),
 			'post_types'        => get_option( 'dragoncontentdecay_post_types', array( 'post' ) ),
 			'is_connected'      => $this->oauth->is_connected(),
+			'gsc_enabled'       => (bool) get_option( 'dragoncontentdecay_gsc_enabled', 0 ),
+			'gsc_property'      => (string) get_option( 'dragoncontentdecay_gsc_property', '' ),
+			'gsc_scope_granted' => OAuth::has_searchconsole_scope(),
+			'gsc_sites'         => $this->gsc_site_choices(),
 		);
+	}
+
+	/**
+	 * The verified Search Console properties to offer, but only when a live
+	 * lookup is worthwhile (GSC enabled, connected, and the scope granted).
+	 *
+	 * @return string[]
+	 */
+	private function gsc_site_choices(): array {
+		if ( ! get_option( 'dragoncontentdecay_gsc_enabled', 0 ) || ! $this->oauth->is_connected() || ! OAuth::has_searchconsole_scope() ) {
+			return array();
+		}
+
+		// Cache so the settings page (which re-renders on every save) doesn't make
+		// a live Google API call each load. Only a non-empty result is cached, so a
+		// transient lookup failure is retried rather than stuck for the TTL.
+		$cached = get_transient( 'dragoncontentdecay_gsc_sites' );
+		if ( is_array( $cached ) && ! empty( $cached ) ) {
+			return $cached;
+		}
+
+		$sites = ( new API_GSC( $this->oauth ) )->list_sites();
+		if ( ! empty( $sites ) ) {
+			set_transient( 'dragoncontentdecay_gsc_sites', $sites, 10 * MINUTE_IN_SECONDS );
+		}
+
+		return $sites;
 	}
 
 	/**
@@ -260,6 +291,12 @@ class Admin {
 		if ( isset( $_POST['dragoncontentdecay_post_types'] ) ) {
 			$post_types = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['dragoncontentdecay_post_types'] ) );
 			update_option( 'dragoncontentdecay_post_types', $post_types );
+		}
+
+		update_option( 'dragoncontentdecay_gsc_enabled', empty( $_POST['dragoncontentdecay_gsc_enabled'] ) ? 0 : 1 );
+
+		if ( isset( $_POST['dragoncontentdecay_gsc_property'] ) ) {
+			update_option( 'dragoncontentdecay_gsc_property', sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_gsc_property'] ) ) );
 		}
 
 		update_option( 'dragoncontentdecay_delete_data_on_uninstall', empty( $_POST['dragoncontentdecay_delete_data_on_uninstall'] ) ? 0 : 1 );

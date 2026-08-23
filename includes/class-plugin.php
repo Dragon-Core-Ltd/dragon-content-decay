@@ -30,6 +30,7 @@ class Plugin {
 	 * GA4 API instance
 	 */
 	private ?API_GA4 $api_ga4 = null;
+	private ?API_GSC $api_gsc = null;
 
 	/**
 	 * Analyzer instance
@@ -147,7 +148,8 @@ class Plugin {
 	private function init_components(): void {
 		$this->oauth         = new OAuth();
 		$this->api_ga4       = new API_GA4( $this->oauth );
-		$this->analyzer      = new Analyzer( $this->api_ga4 );
+		$this->api_gsc       = new API_GSC( $this->oauth );
+		$this->analyzer      = new Analyzer( $this->api_ga4, $this->api_gsc );
 		$this->scheduler     = new Scheduler( $this->analyzer );
 		$this->notifications = new Notifications();
 		$this->admin         = new Admin( $this->oauth, $this->analyzer );
@@ -188,7 +190,9 @@ class Plugin {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		// Decay scores cache table.
+		// Decay scores cache table. The search_* columns hold the optional Google
+		// Search Console signal (clicks/impressions/position, current vs previous
+		// period); they stay 0 until GSC is connected and enabled.
 		$table_scores = $wpdb->prefix . 'dcd_scores';
 		$sql_scores   = "CREATE TABLE $table_scores (
             post_id bigint(20) unsigned NOT NULL,
@@ -196,6 +200,11 @@ class Plugin {
             trend varchar(20) NOT NULL DEFAULT 'stable',
             pageviews_current int(11) NOT NULL DEFAULT 0,
             pageviews_previous int(11) NOT NULL DEFAULT 0,
+            search_clicks_current int(11) NOT NULL DEFAULT 0,
+            search_clicks_previous int(11) NOT NULL DEFAULT 0,
+            search_impressions_current int(11) NOT NULL DEFAULT 0,
+            search_impressions_previous int(11) NOT NULL DEFAULT 0,
+            search_position float NOT NULL DEFAULT 0,
             last_calculated timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (post_id)
         ) $charset_collate;";

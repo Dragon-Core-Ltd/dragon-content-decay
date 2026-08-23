@@ -102,6 +102,50 @@ defined( 'ABSPATH' ) || exit;
 						</p>
 					</td>
 				</tr>
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Search Console', 'dragon-content-decay' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="dragoncontentdecay_gsc_enabled" value="1" <?php checked( $settings['gsc_enabled'] ); ?>>
+								<?php esc_html_e( 'Also pull Google Search Console data (search clicks & impressions) alongside GA4', 'dragon-content-decay' ); ?>
+							</label>
+							<p class="description">
+								<?php esc_html_e( 'Enable the Search Console API in your Google Cloud project first. After turning this on and saving, reconnect to Google to grant Search Console access.', 'dragon-content-decay' ); ?>
+							</p>
+							<?php if ( $settings['gsc_enabled'] && $settings['is_connected'] && ! $settings['gsc_scope_granted'] ) : ?>
+								<p class="description dcd-status-disconnected">
+									<span class="dashicons dashicons-warning"></span>
+									<?php esc_html_e( 'Reconnect to Google to grant Search Console access.', 'dragon-content-decay' ); ?>
+									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=connect' ), 'dragoncontentdecay_oauth_action' ) ); ?>"><?php esc_html_e( 'Reconnect now', 'dragon-content-decay' ); ?></a>
+								</p>
+							<?php endif; ?>
+						</td>
+					</tr>
+					<?php if ( $settings['gsc_enabled'] ) : ?>
+					<tr>
+						<th scope="row">
+							<label for="dragoncontentdecay_gsc_property"><?php esc_html_e( 'Search Console property', 'dragon-content-decay' ); ?></label>
+						</th>
+						<td>
+							<?php if ( ! empty( $settings['gsc_sites'] ) ) : ?>
+								<select id="dragoncontentdecay_gsc_property" name="dragoncontentdecay_gsc_property">
+									<option value=""><?php esc_html_e( '— Select a property —', 'dragon-content-decay' ); ?></option>
+									<?php foreach ( $settings['gsc_sites'] as $dragoncontentdecay_site ) : ?>
+										<option value="<?php echo esc_attr( $dragoncontentdecay_site ); ?>" <?php selected( $settings['gsc_property'], $dragoncontentdecay_site ); ?>>
+											<?php echo esc_html( $dragoncontentdecay_site ); ?>
+										</option>
+									<?php endforeach; ?>
+								</select>
+							<?php elseif ( $settings['is_connected'] && $settings['gsc_scope_granted'] ) : ?>
+								<p class="description"><?php esc_html_e( 'No Search Console properties were found for this Google account.', 'dragon-content-decay' ); ?></p>
+								<input type="hidden" name="dragoncontentdecay_gsc_property" value="<?php echo esc_attr( $settings['gsc_property'] ); ?>">
+							<?php else : ?>
+								<p class="description"><?php esc_html_e( 'Connect and grant Search Console access to choose a property.', 'dragon-content-decay' ); ?></p>
+								<input type="hidden" name="dragoncontentdecay_gsc_property" value="<?php echo esc_attr( $settings['gsc_property'] ); ?>">
+							<?php endif; ?>
+						</td>
+					</tr>
+					<?php endif; ?>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Connection Status', 'dragon-content-decay' ); ?></th>
 					<td>

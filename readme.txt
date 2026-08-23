@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.9
+Stable tag: 1.0.10
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,10 @@ Yes! You can select which post types to track in the settings.
 Data syncs automatically once per day. You can also manually sync from the dashboard.
 
 == Changelog ==
+
+= 1.0.10 =
+* New: Google Search Console integration. Turn on "Search Console" under Settings, reconnect to Google to grant read-only access, and pick your verified property — the plugin then pulls per-page search clicks and impressions (current vs previous period) alongside GA4 pageviews, and the decaying-content dashboard gains a Search Clicks column. GA4 remains the decay driver; this is an additional signal, and existing GA4-only setups are untouched until you opt in.
+* Note: this needs the Search Console API enabled in your Google Cloud project, and a reconnect to grant the new scope. GA4-only users are never prompted to reconnect.
 
 = 1.0.9 =
 * Fixed: clicking "Sync Now" while a sync is already in progress (for example during the daily run) now shows a clear "already running" message instead of a misleading "Sync complete. Analyzed 0 posts."
