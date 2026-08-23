@@ -57,8 +57,14 @@ class Analyzer {
 			)
 		);
 
+		// Pre-resolve leaf slugs in one query so a large GA4 property (up to ~20k
+		// paths across both periods) doesn't run a per-path database lookup and
+		// time the sync out. Ambiguous or unmatched slugs fall back to the precise
+		// resolver.
+		$slug_map = $this->build_slug_map( $all_paths );
+
 		foreach ( $all_paths as $path ) {
-			$post_id = $this->api_ga4->path_to_post_id( $path );
+			$post_id = $this->resolve_path( $path, $slug_map );
 			if ( ! $post_id ) {
 				continue;
 			}
@@ -71,6 +77,80 @@ class Analyzer {
 		}
 
 		return $analyzed;
+	}
+
+	/**
+	 * Build a leaf-slug => [post IDs] map for the given paths in one query set.
+	 *
+	 * @param array<int,string> $paths GA4 paths.
+	 * @return array<string,array<int,int>>
+	 */
+	private function build_slug_map( array $paths ): array {
+		global $wpdb;
+
+		$slugs = array();
+		foreach ( $paths as $path ) {
+			$trimmed = trim( (string) $path, '/' );
+			if ( '' === $trimmed ) {
+				continue;
+			}
+			$parts                = explode( '/', $trimmed );
+			$slugs[ end( $parts ) ] = true;
+		}
+		$slugs = array_keys( $slugs );
+		if ( empty( $slugs ) ) {
+			return array();
+		}
+
+		$types = (array) get_option( 'dragoncontentdecay_post_types', array( 'post' ) );
+		if ( empty( $types ) ) {
+			$types = array( 'post' );
+		}
+
+		$map      = array();
+		$type_ph  = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
+
+		foreach ( array_chunk( $slugs, 500 ) as $chunk ) {
+			$slug_ph = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Custom read; the query is prepared below with only fixed %s placeholder lists interpolated.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $slug_ph/$type_ph are fixed lists of %s placeholders and $wpdb->posts is the core table name; all values are prepared.
+					"SELECT ID, post_name FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_name IN ( {$slug_ph} ) AND post_type IN ( {$type_ph} )",
+					array_merge( $chunk, $types )
+				)
+			);
+			foreach ( (array) $rows as $row ) {
+				$map[ $row->post_name ][] = (int) $row->ID;
+			}
+		}
+
+		return $map;
+	}
+
+	/**
+	 * Resolve a GA4 path to a post ID, preferring the batched slug map for an
+	 * unambiguous leaf-slug match and falling back to the precise resolver.
+	 *
+	 * @param string                        $path     GA4 path.
+	 * @param array<string,array<int,int>>  $slug_map Leaf-slug map.
+	 * @return int|null
+	 */
+	private function resolve_path( string $path, array $slug_map ): ?int {
+		$trimmed = trim( $path, '/' );
+
+		// Fast path only for a single-segment path (/slug/): there the slug is the
+		// whole path, so a unique match is identical to what the precise resolver
+		// would return. Multi-segment paths (/category/slug/) depend on hierarchy
+		// or rewrite rules, so always resolve those precisely to avoid mis-
+		// attributing views to a same-slug post under a different path.
+		if ( '' !== $trimmed && ! str_contains( $trimmed, '/' ) ) {
+			if ( isset( $slug_map[ $trimmed ] ) && 1 === count( $slug_map[ $trimmed ] ) ) {
+				return $slug_map[ $trimmed ][0];
+			}
+		}
+
+		return $this->api_ga4->path_to_post_id( $path );
 	}
 
 	/**
