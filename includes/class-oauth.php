@@ -84,7 +84,9 @@ class OAuth {
 	 * Get redirect URI for OAuth callback
 	 */
 	public function get_redirect_uri(): string {
-		return admin_url( 'admin.php?page=dragon-content-decay-settings&action=callback' );
+		// Must exactly match the admin page the callback is handled on, or Google
+		// rejects the flow with redirect_uri_mismatch.
+		return admin_url( 'tools.php?page=dragon-content-decay&tab=settings&action=callback' );
 	}
 
 	/**
@@ -143,7 +145,9 @@ class OAuth {
 	 * @return bool
 	 */
 	public static function has_client_secret(): bool {
-		return '' !== (string) get_option( self::SECRET_OPTION, '' );
+		// Reflect whether a *usable* secret exists: an encrypted value that no
+		// longer decrypts (e.g. salts changed) should not read as configured.
+		return '' !== self::get_client_secret();
 	}
 
 	/**

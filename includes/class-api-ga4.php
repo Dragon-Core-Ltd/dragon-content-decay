@@ -58,7 +58,7 @@ class API_GA4 {
 		}
 
 		$client_id     = get_option( 'dragoncontentdecay_google_client_id', '' );
-		$client_secret = get_option( 'dragoncontentdecay_google_client_secret', '' );
+		$client_secret = OAuth::get_client_secret();
 		$refresh_token = $this->oauth->get_refresh_token();
 
 		if ( empty( $client_id ) || empty( $client_secret ) || empty( $refresh_token ) ) {
