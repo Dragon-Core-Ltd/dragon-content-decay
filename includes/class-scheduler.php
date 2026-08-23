@@ -60,6 +60,14 @@ class Scheduler {
 
 		$result = $this->sync();
 
+		// A sync was already running (daily cron or another manual sync); don't
+		// report a misleading "Sync complete. Analyzed 0 posts."
+		if ( ! empty( $result['skipped'] ) ) {
+			wp_send_json_error(
+				array( 'message' => __( 'A sync is already running. Please try again in a moment.', 'dragon-content-decay' ) )
+			);
+		}
+
 		wp_send_json_success(
 			array(
 				'message'  => sprintf(

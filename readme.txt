@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.8
+Stable tag: 1.0.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,9 @@ Yes! You can select which post types to track in the settings.
 Data syncs automatically once per day. You can also manually sync from the dashboard.
 
 == Changelog ==
+
+= 1.0.9 =
+* Fixed: clicking "Sync Now" while a sync is already in progress (for example during the daily run) now shows a clear "already running" message instead of a misleading "Sync complete. Analyzed 0 posts."
 
 = 1.0.8 =
 * Improved: the analysis sync now runs within a time budget and works through your content across runs, so very large sites no longer risk the sync timing out mid-way.
