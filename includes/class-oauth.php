@@ -95,11 +95,6 @@ class OAuth {
 	private const SECRET_OPTION = 'dragoncontentdecay_google_client_secret';
 
 	/**
-	 * Marker prefixing an encrypted client secret.
-	 */
-	private const SECRET_PREFIX = 'dcdenc:';
-
-	/**
 	 * Transient key holding the pending OAuth state token, per user.
 	 */
 	private const STATE_TRANSIENT = 'dragoncontentdecay_oauth_state_';
@@ -115,9 +110,16 @@ class OAuth {
 			return '';
 		}
 
-		if ( str_starts_with( $stored, self::SECRET_PREFIX ) ) {
-			$plain = self::decrypt( substr( $stored, strlen( self::SECRET_PREFIX ) ) );
-			return null !== $plain ? $plain : '';
+		$plain = Crypto::decrypt( $stored );
+		if ( null !== $plain ) {
+			return $plain;
+		}
+
+		// An authenticated value that no longer decrypts (e.g. salts changed)
+		// must not be mistaken for plaintext: re-encrypting it would corrupt the
+		// stored secret permanently and hand the ciphertext to Google. Fail safe.
+		if ( str_starts_with( $stored, 'DRGNc1:' ) ) {
+			return '';
 		}
 
 		// Legacy plaintext: re-store encrypted, keeping the value.
@@ -136,7 +138,7 @@ class OAuth {
 			return;
 		}
 
-		update_option( self::SECRET_OPTION, self::SECRET_PREFIX . self::encrypt( $plain ), false );
+		update_option( self::SECRET_OPTION, Crypto::encrypt( $plain ), false );
 	}
 
 	/**
@@ -258,53 +260,11 @@ class OAuth {
 	}
 
 	/**
-	 * Encrypt data using WordPress auth key
-	 */
-	private static function encrypt( string $data ): string {
-		$key = hash( 'sha256', wp_salt( 'auth' ), true );
-		$iv  = openssl_random_pseudo_bytes( 16 );
-
-		$encrypted = openssl_encrypt( $data, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
-
-		if ( false === $encrypted ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( 'DCD: Encryption failed' ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
-			}
-			return '';
-		}
-
-		// Combine IV + encrypted data and base64 encode for storage
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Binary-safe storage of AES-encrypted OAuth tokens, not code obfuscation.
-		return base64_encode( $iv . $encrypted );
-	}
-
-	/**
-	 * Decrypt data using WordPress auth key
-	 */
-	private static function decrypt( string $data ): ?string {
-		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Binary-safe retrieval of AES-encrypted OAuth tokens, not code obfuscation.
-		$data = base64_decode( $data, true );
-
-		if ( false === $data || strlen( $data ) < 17 ) {
-			return null;
-		}
-
-		$key       = hash( 'sha256', wp_salt( 'auth' ), true );
-		$iv        = substr( $data, 0, 16 );
-		$encrypted = substr( $data, 16 );
-
-		$decrypted = openssl_decrypt( $encrypted, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv );
-
-		return false !== $decrypted ? $decrypted : null;
-	}
-
-	/**
 	 * Store tokens in database (encrypted)
 	 */
 	private function store_tokens( array $tokens ): void {
 		$json      = wp_json_encode( $tokens );
-		$encrypted = self::encrypt( $json );
+		$encrypted = Crypto::encrypt( $json );
 
 		if ( ! empty( $encrypted ) ) {
 			update_option( self::TOKEN_OPTION, $encrypted );
@@ -321,7 +281,7 @@ class OAuth {
 			return null;
 		}
 
-		$json = self::decrypt( $encrypted );
+		$json = Crypto::decrypt( $encrypted );
 
 		if ( null === $json ) {
 			// Migration: try to read old base64-only format

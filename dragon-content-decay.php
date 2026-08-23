@@ -33,6 +33,7 @@ if ( file_exists( DRAGONCONTENTDECAY_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
 }
 
 // Load plugin classes
+require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-crypto.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-plugin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-admin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-oauth.php';
