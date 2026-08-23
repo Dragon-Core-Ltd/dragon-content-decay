@@ -187,14 +187,14 @@ class Notifications {
 					</div>
 
 					<center>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=dragon-content-decay' ) ); ?>" class="btn">
+						<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay' ) ); ?>" class="btn">
 							<?php esc_html_e( 'View Full Dashboard', 'dragon-content-decay' ); ?>
 						</a>
 					</center>
 				</div>
 				<div class="footer">
 					<p><?php esc_html_e( 'This email was sent by Dragon Content Decay plugin.', 'dragon-content-decay' ); ?></p>
-					<p><a href="<?php echo esc_url( admin_url( 'admin.php?page=dragon-content-decay-settings' ) ); ?>"><?php esc_html_e( 'Manage notification settings', 'dragon-content-decay' ); ?></a></p>
+					<p><a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>"><?php esc_html_e( 'Manage notification settings', 'dragon-content-decay' ); ?></a></p>
 				</div>
 			</div>
 		</body>

@@ -79,33 +79,85 @@ class Scheduler {
 	 * @return array ['synced' => int, 'analyzed' => int]
 	 */
 	public function sync(): array {
-		// Log start
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( 'DCD: Starting data sync at ' . current_time( 'mysql' ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+		// Guard against overlapping syncs (the daily cron and a manual sync, or two
+		// manual syncs). The lock carries its own expiry so a fatal or timeout
+		// mid-sync cannot wedge every future run.
+		if ( ! $this->acquire_lock() ) {
+			return array(
+				'synced'   => 0,
+				'analyzed' => 0,
+				'skipped'  => true,
+			);
 		}
 
-		$start_time = microtime( true );
+		try {
+			// Log start
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD: Starting data sync at ' . current_time( 'mysql' ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
 
-		// Analyze all posts and calculate decay scores
-		$analyzed = $this->analyzer->analyze_all();
+			$start_time = microtime( true );
 
-		$duration = round( microtime( true ) - $start_time, 2 );
+			// Analyze all posts and calculate decay scores
+			$analyzed = $this->analyzer->analyze_all();
 
-		// Log completion
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			$duration = round( microtime( true ) - $start_time, 2 );
+
+			// Log completion
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
+
+			// Update last sync time
+			update_option( 'dragoncontentdecay_last_sync', time() );
+			update_option( 'dragoncontentdecay_last_sync_count', $analyzed );
+
+			return array(
+				'synced'   => $analyzed,
+				'analyzed' => $analyzed,
+			);
+		} finally {
+			$this->release_lock();
+		}
+	}
+
+	/**
+	 * Lock key for the in-progress sync guard.
+	 */
+	private const LOCK_KEY = 'dragoncontentdecay_sync_in_progress';
+
+	/**
+	 * Atomically acquire the sync lock. With a persistent object cache, wp_cache_add
+	 * is a genuine atomic "set if absent" that closes the check-then-set race
+	 * between concurrent requests; without one it falls back to a transient (the
+	 * daily cron plus an occasional manual sync race only to duplicate idempotent
+	 * work). The lock self-expires so a fatal mid-sync cannot wedge future runs.
+	 *
+	 * @return bool True if the lock was acquired.
+	 */
+	private function acquire_lock(): bool {
+		if ( wp_using_ext_object_cache() ) {
+			return (bool) wp_cache_add( self::LOCK_KEY, 1, 'dragoncontentdecay', 15 * MINUTE_IN_SECONDS );
 		}
 
-		// Update last sync time
-		update_option( 'dragoncontentdecay_last_sync', time() );
-		update_option( 'dragoncontentdecay_last_sync_count', $analyzed );
+		if ( get_transient( self::LOCK_KEY ) ) {
+			return false;
+		}
+		set_transient( self::LOCK_KEY, 1, 15 * MINUTE_IN_SECONDS );
+		return true;
+	}
 
-		return array(
-			'synced'   => $analyzed,
-			'analyzed' => $analyzed,
-		);
+	/**
+	 * Release the sync lock.
+	 */
+	private function release_lock(): void {
+		if ( wp_using_ext_object_cache() ) {
+			wp_cache_delete( self::LOCK_KEY, 'dragoncontentdecay' );
+			return;
+		}
+		delete_transient( self::LOCK_KEY );
 	}
 
 	/**
@@ -145,7 +197,10 @@ class Scheduler {
 	 * @return bool
 	 */
 	public function is_syncing(): bool {
-		return (bool) get_transient( 'dragoncontentdecay_sync_in_progress' );
+		if ( wp_using_ext_object_cache() ) {
+			return false !== wp_cache_get( self::LOCK_KEY, 'dragoncontentdecay' );
+		}
+		return (bool) get_transient( self::LOCK_KEY );
 	}
 
 	/**

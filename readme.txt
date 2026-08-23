@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.7
+Stable tag: 1.0.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,12 @@ Yes! You can select which post types to track in the settings.
 Data syncs automatically once per day. You can also manually sync from the dashboard.
 
 == Changelog ==
+
+= 1.0.8 =
+* Improved: the analysis sync now runs within a time budget and works through your content across runs, so very large sites no longer risk the sync timing out mid-way.
+* Improved: overlapping syncs (the daily job and a manual sync) can no longer run at the same time.
+* Fixed: the "View Dashboard" and "Manage notification settings" links in the digest email now open the correct page.
+* Housekeeping: removed an unused internal database table.
 
 = 1.0.6 =
 * Compatibility: tested up to WordPress 7.1.

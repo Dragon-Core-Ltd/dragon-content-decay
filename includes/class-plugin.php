@@ -61,7 +61,26 @@ class Plugin {
 	 */
 	private function __construct() {
 		self::migrate_legacy_prefix();
+		self::maybe_upgrade();
 		$this->init_components();
+	}
+
+	/**
+	 * Run schema upgrades when the plugin is updated in place.
+	 *
+	 * create_tables() only runs on activation, so a plugin *update* (which does
+	 * not re-activate) would never pick up new columns, e.g. the Search Console
+	 * columns added to dcd_scores. The stored db version is compared on every load
+	 * — a cheap autoloaded-option read — and dbDelta (idempotent) is re-run only
+	 * when it differs, so the ALTER runs once per update and is in place before any
+	 * sync writes a score row.
+	 */
+	private static function maybe_upgrade(): void {
+		if ( get_option( 'dragoncontentdecay_db_version' ) === DRAGONCONTENTDECAY_VERSION ) {
+			return;
+		}
+
+		self::create_tables();
 	}
 
 	/**
@@ -169,22 +188,7 @@ class Plugin {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		// Analytics data table
-		$table_analytics = $wpdb->prefix . 'dcd_analytics';
-		$sql_analytics   = "CREATE TABLE $table_analytics (
-            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-            post_id bigint(20) unsigned NOT NULL,
-            date date NOT NULL,
-            pageviews int(11) NOT NULL DEFAULT 0,
-            sessions int(11) NOT NULL DEFAULT 0,
-            avg_time_on_page float NOT NULL DEFAULT 0,
-            created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            KEY idx_post_date (post_id, date),
-            KEY idx_date (date)
-        ) $charset_collate;";
-
-		// Decay scores cache table
+		// Decay scores cache table.
 		$table_scores = $wpdb->prefix . 'dcd_scores';
 		$sql_scores   = "CREATE TABLE $table_scores (
             post_id bigint(20) unsigned NOT NULL,
@@ -197,7 +201,6 @@ class Plugin {
         ) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		dbDelta( $sql_analytics );
 		dbDelta( $sql_scores );
 
 		// Store database version

@@ -47,15 +47,21 @@ class Analyzer {
 			return 0;
 		}
 
-		$analyzed = 0;
-
-		// Get all paths from both periods
-		$all_paths = array_unique(
-			array_merge(
-				array_keys( $data['current'] ),
-				array_keys( $data['previous'] )
+		// All paths from both periods, reindexed 0..n-1 so the rotating cursor
+		// below can address them positionally.
+		$all_paths = array_values(
+			array_unique(
+				array_merge(
+					array_keys( $data['current'] ),
+					array_keys( $data['previous'] )
+				)
 			)
 		);
+
+		$total = count( $all_paths );
+		if ( 0 === $total ) {
+			return 0;
+		}
 
 		// Pre-resolve leaf slugs in one query so a large GA4 property (up to ~20k
 		// paths across both periods) doesn't run a per-path database lookup and
@@ -63,7 +69,30 @@ class Analyzer {
 		// resolver.
 		$slug_map = $this->build_slug_map( $all_paths );
 
-		foreach ( $all_paths as $path ) {
+		// Bound the run to a wall-clock budget so a large property (thousands of
+		// multi-segment paths, each needing a precise rewrite lookup) cannot exhaust
+		// PHP's max_execution_time and fatal mid-sync. A rotating cursor guarantees
+		// every path is eventually scored across successive runs rather than the
+		// same prefix each time.
+		$deadline = microtime( true ) + $this->time_budget();
+		$cursor   = (int) get_option( 'dragoncontentdecay_analyze_cursor', 0 );
+		if ( $cursor < 0 || $cursor >= $total ) {
+			$cursor = 0;
+		}
+
+		$analyzed  = 0;
+		$processed = 0;
+		$index     = $cursor;
+
+		while ( $processed < $total ) {
+			if ( microtime( true ) > $deadline ) {
+				break;
+			}
+
+			$path = $all_paths[ $index % $total ];
+			++$index;
+			++$processed;
+
 			$post_id = $this->resolve_path( $path, $slug_map );
 			if ( ! $post_id ) {
 				continue;
@@ -76,7 +105,27 @@ class Analyzer {
 			++$analyzed;
 		}
 
+		update_option( 'dragoncontentdecay_analyze_cursor', $index % $total, false );
+
 		return $analyzed;
+	}
+
+	/**
+	 * Wall-clock budget in seconds for a single analysis run, derived from PHP's
+	 * max_execution_time with headroom (or a safe default when it is unlimited).
+	 *
+	 * @return float
+	 */
+	private function time_budget(): float {
+		$max    = (int) ini_get( 'max_execution_time' );
+		$budget = $max > 0 ? max( 10, $max - 10 ) : 60;
+
+		/**
+		 * Filter the wall-clock budget (in seconds) for one decay analysis run.
+		 *
+		 * @param float $budget Seconds.
+		 */
+		return (float) apply_filters( 'dragoncontentdecay_analyze_time_budget', (float) $budget );
 	}
 
 	/**
@@ -94,7 +143,7 @@ class Analyzer {
 			if ( '' === $trimmed ) {
 				continue;
 			}
-			$parts                = explode( '/', $trimmed );
+			$parts                  = explode( '/', $trimmed );
 			$slugs[ end( $parts ) ] = true;
 		}
 		$slugs = array_keys( $slugs );
@@ -107,8 +156,8 @@ class Analyzer {
 			$types = array( 'post' );
 		}
 
-		$map      = array();
-		$type_ph  = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
+		$map     = array();
+		$type_ph = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
 
 		foreach ( array_chunk( $slugs, 500 ) as $chunk ) {
 			$slug_ph = implode( ', ', array_fill( 0, count( $chunk ), '%s' ) );

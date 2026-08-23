@@ -224,50 +224,6 @@ class API_GA4 {
 	}
 
 	/**
-	 * Sync analytics data to database
-	 *
-	 * @param int $period_days Comparison period in days
-	 * @return int Number of posts synced
-	 */
-	public function sync_data( int $period_days = 30 ): int {
-		$data = $this->fetch_comparison_data( $period_days );
-
-		if ( empty( $data['current'] ) && empty( $data['previous'] ) ) {
-			return 0;
-		}
-
-		global $wpdb;
-		$table_analytics = $wpdb->prefix . 'dcd_analytics';
-		$today           = current_time( 'Y-m-d' );
-		$synced          = 0;
-
-		foreach ( $data['current'] as $path => $metrics ) {
-			$post_id = $this->path_to_post_id( $path );
-			if ( ! $post_id ) {
-				continue;
-			}
-
-			// Insert or update analytics record
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Writing to a plugin-owned custom table; no core API or cache applies.
-			$wpdb->replace(
-				$table_analytics,
-				array(
-					'post_id'          => $post_id,
-					'date'             => $today,
-					'pageviews'        => $metrics['pageviews'],
-					'sessions'         => $metrics['sessions'],
-					'avg_time_on_page' => $metrics['avg_time_on_page'],
-				),
-				array( '%d', '%s', '%d', '%d', '%f' )
-			);
-
-			++$synced;
-		}
-
-		return $synced;
-	}
-
-	/**
 	 * Test connection to GA4
 	 */
 	public function test_connection(): bool {
