@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.10
+Stable tag: 1.0.11
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -43,24 +43,35 @@ Search engines favor fresh, updated content. Posts that haven't been refreshed m
 
 This plugin connects to Google Analytics 4 to read the traffic figures it needs
 to detect declining content. It is not usable without that connection, and you
-supply your own Google Cloud OAuth credentials — the plugin does not proxy
+supply your own Google Cloud OAuth credentials - the plugin does not proxy
 anything through Dragon Core.
 
-Two kinds of request are made to Google:
+Three kinds of request are made to Google:
 
 * **Signing in.** When you connect your account, the plugin performs a standard
   OAuth handshake with Google using your client ID and secret, and stores the
   resulting access and refresh tokens in your own database. Tokens are refreshed
-  automatically when they expire.
-* **Reading analytics.** When you sync — on the schedule you configure, or when
-  you press Sync now — the plugin calls the Google Analytics Data API for the
-  property you selected. Each request contains your GA4 property ID, a date
-  range, and the names of the metrics and dimensions being requested. Google
-  returns the page paths and traffic figures already recorded in your own
-  Analytics property.
+  automatically when they expire. The plugin asks for read-only Analytics
+  access; read-only Search Console access is requested only if you turn the
+  Search Console option on.
+* **Reading analytics.** When you sync - once a day, or when you press Sync
+  now - the plugin calls the Google Analytics Data API for the property you
+  selected. Each request contains your GA4 property ID, a date range, and the
+  names of the metrics and dimensions being requested. Google returns the page
+  paths and traffic figures already recorded in your own Analytics property.
+* **Reading Search Console (optional).** Nothing is sent to Search Console
+  unless you enable the Search Console option in Settings. Once enabled, the
+  plugin calls the Google Search Console API (searchconsole.googleapis.com) in
+  two places: the Settings screen lists your verified Search Console properties
+  so you can pick one (a request carrying only your OAuth token), and each sync
+  queries search analytics for the property you chose. Each sync request
+  contains that property, a start and end date for the current and previous
+  comparison periods, the "page" dimension and a row limit, together with your
+  OAuth token. Google returns the per-page clicks, impressions and average
+  position already recorded in your own Search Console property.
 
-Beyond the credentials themselves — your client ID and secret, the resulting
-tokens, and your site's admin URL as the OAuth redirect address — no post
+Beyond the credentials themselves - your client ID and secret, the resulting
+tokens, and your site's admin URL as the OAuth redirect address - no post
 content, site content or WordPress user data is sent to Google by this plugin,
 and nothing is sent to Dragon Core.
 
@@ -68,19 +79,28 @@ Google terms of service: https://policies.google.com/terms
 Google privacy policy: https://policies.google.com/privacy
 Google APIs user data policy: https://developers.google.com/terms/api-services-user-data-policy
 
+= Bundled libraries =
+
+The plugin ships the Google API PHP client (google/apiclient,
+google/analytics-data) and its dependencies in its `vendor/` directory. These
+are used only for the Google requests described above and are distributed
+under GPL-compatible licences (Apache-2.0, MIT and BSD-3-Clause); each
+package's licence file is included alongside its source.
+
 == Installation ==
 
 1. Upload the plugin files to `/wp-content/plugins/dragon-content-decay/`
 2. Activate the plugin through the 'Plugins' screen in WordPress
 3. Go to Content Decay → Settings to configure
 4. Set up Google Cloud credentials and connect to GA4
-5. View your content decay dashboard!
+5. Optionally turn on Search Console in Settings and reconnect to add search clicks and impressions
+6. View your content decay dashboard!
 
 **Google Cloud Setup:**
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
-3. Enable the Google Analytics Data API
+3. Enable the Google Analytics Data API (and the Google Search Console API if you want the optional Search Console signal)
 4. Create OAuth 2.0 credentials (Web application)
 5. Add the redirect URI shown in plugin settings
 6. Copy Client ID and Secret to plugin settings
@@ -105,9 +125,12 @@ Yes! You can select which post types to track in the settings.
 
 = How often does data sync? =
 
-Data syncs automatically once per day. You can also manually sync from the dashboard.
+Data syncs automatically once a day. You can also press Sync now on the dashboard at any time. Only the email digest frequency is configurable.
 
 == Changelog ==
+
+= 1.0.11 =
+* Readme: the external services section now also covers the optional Google Search Console API calls (when they happen and what is sent), states that syncs run once a day, and lists the bundled Google client libraries and their licences. No code changes.
 
 = 1.0.10 =
 * New: Google Search Console integration. Turn on "Search Console" under Settings, reconnect to Google to grant read-only access, and pick your verified property — the plugin then pulls per-page search clicks and impressions (current vs previous period) alongside GA4 pageviews, and the decaying-content dashboard gains a Search Clicks column. GA4 remains the decay driver; this is an additional signal, and existing GA4-only setups are untouched until you opt in.
@@ -156,11 +179,12 @@ Data syncs automatically once per day. You can also manually sync from the dashb
 
 == Privacy Policy ==
 
-Dragon Content Decay connects to Google Analytics 4 to retrieve traffic data for your content. This requires OAuth authentication with your Google account.
+Dragon Content Decay connects to Google Analytics 4 to retrieve traffic data for your content, and optionally to Google Search Console for search clicks and impressions. This requires OAuth authentication with your Google account.
 
 **Data Accessed:**
 * Page views, sessions, and traffic metrics for your site's content
 * Analytics property information
+* Search Console property list and per-page clicks, impressions and position (only if you enable Search Console)
 
 **Data Storage:**
 * OAuth tokens are stored locally in your WordPress database (encrypted)
@@ -168,11 +192,14 @@ Dragon Content Decay connects to Google Analytics 4 to retrieve traffic data for
 * No data is sent to Dragon Core or any third parties besides Google
 
 **Third-Party Services:**
-This plugin uses the [Google Analytics Data API](https://developers.google.com/analytics/devguides/reporting/data/v1) to retrieve analytics data. Your use of this API is subject to [Google's Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms).
+This plugin uses the [Google Analytics Data API](https://developers.google.com/analytics/devguides/reporting/data/v1) to retrieve analytics data and, if enabled, the [Google Search Console API](https://developers.google.com/webmaster-tools) to retrieve search performance data. Your use of these APIs is subject to [Google's Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms).
 
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.11 =
+Documentation-only update: fuller disclosure of the Google Analytics and optional Search Console connections. No behaviour changes.
 
 = 1.0.0 =
 Initial release. Set up your Google Analytics connection to start tracking content decay.
