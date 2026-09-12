@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.11
+Stable tag: 1.0.12
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -129,6 +129,12 @@ Data syncs automatically once a day. You can also press Sync now on the dashboar
 
 == Changelog ==
 
+= 1.0.12 =
+* Fixed: Search Console figures for a page were being overwritten when the same page appeared under more than one address (for example www and non-www, or http and https, as a Domain property reports). Clicks and impressions from all of a page's addresses are now added together, and the average position is weighted by impressions.
+* Fixed: only Search Console rows for this site's own domain are counted (www and non-www both count as this site); other subdomains in a Domain property no longer leak into the figures. The new `dragoncontentdecay_gsc_site_hosts` filter lets you add a property host that differs from your WordPress home URL.
+* Fixed: Search Console data was not matched to a post when GA4 and Search Console reported the same page with a different trailing slash or URL encoding, leaving the Search Clicks column at 0 for pages that do have clicks. Both sources are now matched on the same normalised path, and GA4 rows that only differ in this way are added together instead of counted separately.
+* Fixed: a sync that could not save some decay scores (for example a database error) was still reported as complete. The dashboard and the Sync Now button now say how many posts could not be saved, and the sync is recorded as partial or failed.
+
 = 1.0.11 =
 * Readme: the external services section now also covers the optional Google Search Console API calls (when they happen and what is sent), states that syncs run once a day, and lists the bundled Google client libraries and their licences. No code changes.
 
@@ -197,6 +203,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.12 =
+Fixes Search Console figures being overwritten across www/non-www addresses and not matching posts on trailing-slash differences. Run a sync after updating.
 
 = 1.0.11 =
 Documentation-only update: fuller disclosure of the Google Analytics and optional Search Console connections. No behaviour changes.

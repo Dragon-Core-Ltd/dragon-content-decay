@@ -88,7 +88,7 @@ class API_GSC {
 	 * Fetch current-vs-previous per-page search metrics for the configured property.
 	 *
 	 * @param int $period_days Comparison period length in days.
-	 * @return array{current: array<string,array>, previous: array<string,array>} Keyed by URL path.
+	 * @return array{current: array<string,array>, previous: array<string,array>} Keyed by normalised URL path.
 	 */
 	public function fetch_comparison_data( int $period_days ): array {
 		$empty    = array(
@@ -121,7 +121,7 @@ class API_GSC {
 	 * @param string $start    Start date (Y-m-d).
 	 * @param string $end      End date (Y-m-d).
 	 * @param string $token    Bearer token.
-	 * @return array<string,array> Keyed by URL path.
+	 * @return array<string,array> Keyed by normalised URL path.
 	 */
 	private function query( string $property, string $start, string $end, string $token ): array {
 		$url  = self::API_BASE . '/sites/' . rawurlencode( $property ) . '/searchAnalytics/query';
@@ -139,22 +139,33 @@ class API_GSC {
 
 		$data = json_decode( (string) ( $res['body'] ?? '' ), true );
 
-		return is_array( $data ) ? self::parse_rows( $data ) : array();
+		return is_array( $data ) ? self::parse_rows( $data, self::site_hosts() ) : array();
 	}
 
 	/**
 	 * Parse a searchAnalytics.query response (grouped by page) into a
-	 * path => metrics map. Pure — no WordPress or HTTP required.
+	 * path => metrics map. Pure: no WordPress or HTTP required.
 	 *
-	 * @param array $response Decoded API response.
+	 * Only rows whose host is one of the accepted hosts (www. and non-www.
+	 * both count) are kept, so a Domain property's other subdomains do not
+	 * leak in. Rows that share a normalised path (scheme or www. variants,
+	 * trailing slash, encoding) are summed: clicks and impressions added,
+	 * position impression-weighted (plain mean when the rows carry no
+	 * impressions).
+	 *
+	 * @param array    $response   Decoded API response.
+	 * @param string[] $site_hosts Accepted host names (compared via normalize_host()).
 	 * @return array<string,array{clicks:int,impressions:int,position:float}>
 	 */
-	public static function parse_rows( array $response ): array {
+	public static function parse_rows( array $response, array $site_hosts ): array {
 		$out = array();
 
 		if ( empty( $response['rows'] ) || ! is_array( $response['rows'] ) ) {
 			return $out;
 		}
+
+		$site_hosts = array_map( array( self::class, 'normalize_host' ), array_map( 'strval', $site_hosts ) );
+		$acc        = array();
 
 		foreach ( $response['rows'] as $row ) {
 			$key = isset( $row['keys'][0] ) ? (string) $row['keys'][0] : '';
@@ -162,15 +173,43 @@ class API_GSC {
 				continue;
 			}
 
-			$path = self::url_to_path( $key );
-			if ( '' === $path ) {
+			$host = wp_parse_url( $key, PHP_URL_HOST );
+			if ( ! is_string( $host ) || ! in_array( self::normalize_host( $host ), $site_hosts, true ) ) {
 				continue;
 			}
 
+			$path        = self::url_to_path( $key );
+			$impressions = (float) ( $row['impressions'] ?? 0 );
+			$position    = (float) ( $row['position'] ?? 0 );
+
+			if ( ! isset( $acc[ $path ] ) ) {
+				$acc[ $path ] = array(
+					'clicks'       => 0.0,
+					'impressions'  => 0.0,
+					'pos_weighted' => 0.0,
+					'pos_sum'      => 0.0,
+					'rows'         => 0,
+				);
+			}
+
+			$acc[ $path ]['clicks']       += (float) ( $row['clicks'] ?? 0 );
+			$acc[ $path ]['impressions']  += $impressions;
+			$acc[ $path ]['pos_weighted'] += $position * $impressions;
+			$acc[ $path ]['pos_sum']      += $position;
+			++$acc[ $path ]['rows'];
+		}
+
+		foreach ( $acc as $path => $sums ) {
+			if ( $sums['impressions'] > 0 ) {
+				$position = $sums['pos_weighted'] / $sums['impressions'];
+			} else {
+				$position = $sums['pos_sum'] / $sums['rows'];
+			}
+
 			$out[ $path ] = array(
-				'clicks'      => (int) round( (float) ( $row['clicks'] ?? 0 ) ),
-				'impressions' => (int) round( (float) ( $row['impressions'] ?? 0 ) ),
-				'position'    => round( (float) ( $row['position'] ?? 0 ), 1 ),
+				'clicks'      => (int) round( $sums['clicks'] ),
+				'impressions' => (int) round( $sums['impressions'] ),
+				'position'    => round( $position, 1 ),
 			);
 		}
 
@@ -178,7 +217,63 @@ class API_GSC {
 	}
 
 	/**
-	 * Reduce a GSC page URL to the path GA4 keys on.
+	 * Lower-case a host name and drop a leading "www." so the two forms of a
+	 * site compare equal.
+	 *
+	 * @param string $host Host name.
+	 * @return string
+	 */
+	public static function normalize_host( string $host ): string {
+		$host = strtolower( trim( $host ) );
+
+		return str_starts_with( $host, 'www.' ) ? substr( $host, 4 ) : $host;
+	}
+
+	/**
+	 * Host names whose Search Console rows count as this site: the home URL's
+	 * host by default (www. and non-www. compare equal), filterable for a
+	 * property that lives on a different host.
+	 *
+	 * @return string[]
+	 */
+	public static function site_hosts(): array {
+		$host  = wp_parse_url( home_url( '/' ), PHP_URL_HOST );
+		$hosts = is_string( $host ) && '' !== $host ? array( self::normalize_host( $host ) ) : array();
+
+		/*
+		 * The configured property is accepted too. Its host is legitimately not
+		 * home_url() after a domain move, or on a headless or proxied front end,
+		 * and keeping only home_url() would drop every row and report zero
+		 * Search data on sites that were getting it before.
+		 */
+		$property = (string) get_option( 'dragoncontentdecay_gsc_property', '' );
+
+		if ( '' !== $property ) {
+			$candidate = str_starts_with( $property, 'sc-domain:' )
+				? substr( $property, strlen( 'sc-domain:' ) )
+				: (string) wp_parse_url( $property, PHP_URL_HOST );
+
+			$candidate = trim( $candidate );
+
+			if ( '' !== $candidate ) {
+				$hosts[] = self::normalize_host( $candidate );
+			}
+		}
+
+		$hosts = array_values( array_unique( $hosts ) );
+
+		/**
+		 * Filter the host names whose Search Console rows are attributed to this site.
+		 *
+		 * @param string[] $hosts Accepted host names; "www." prefixes are ignored when comparing.
+		 */
+		$hosts = apply_filters( 'dragoncontentdecay_gsc_site_hosts', $hosts );
+
+		return array_values( array_filter( array_map( 'strval', (array) $hosts ) ) );
+	}
+
+	/**
+	 * Reduce a GSC page URL to the normalised path key GA4 data is joined on.
 	 *
 	 * @param string $url Full page URL.
 	 * @return string
@@ -186,7 +281,7 @@ class API_GSC {
 	private static function url_to_path( string $url ): string {
 		$path = wp_parse_url( $url, PHP_URL_PATH );
 
-		return is_string( $path ) ? $path : '';
+		return Analyzer::path_key( is_string( $path ) ? $path : '/' );
 	}
 
 	/**

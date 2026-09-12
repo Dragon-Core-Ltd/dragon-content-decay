@@ -68,6 +68,22 @@ class Scheduler {
 			);
 		}
 
+		if ( self::STATUS_COMPLETE !== $result['status'] ) {
+			wp_send_json_error(
+				array(
+					'message'  => sprintf(
+						/* translators: 1: Number of posts analyzed, 2: Number of posts whose score could not be saved */
+						__( 'Sync finished with errors. Analyzed %1$d posts; %2$d could not be saved. Check the database and try again.', 'dragon-content-decay' ),
+						$result['analyzed'],
+						$result['failed']
+					),
+					'analyzed' => $result['analyzed'],
+					'failed'   => $result['failed'],
+					'status'   => $result['status'],
+				)
+			);
+		}
+
 		wp_send_json_success(
 			array(
 				'message'  => sprintf(
@@ -82,9 +98,25 @@ class Scheduler {
 	}
 
 	/**
+	 * Sync outcome: every score row written and the cursor saved.
+	 */
+	public const STATUS_COMPLETE = 'complete';
+
+	/**
+	 * Sync outcome: some score rows written, but at least one write (or the
+	 * cursor save) failed.
+	 */
+	public const STATUS_PARTIAL = 'partial';
+
+	/**
+	 * Sync outcome: score rows were attempted and none could be written.
+	 */
+	public const STATUS_FAILED = 'failed';
+
+	/**
 	 * Perform sync operation
 	 *
-	 * @return array ['synced' => int, 'analyzed' => int]
+	 * @return array ['synced' => int, 'analyzed' => int, 'failed' => int, 'status' => string]
 	 */
 	public function sync(): array {
 		// Guard against overlapping syncs (the daily cron and a manual sync, or two
@@ -94,6 +126,8 @@ class Scheduler {
 			return array(
 				'synced'   => 0,
 				'analyzed' => 0,
+				'failed'   => 0,
+				'status'   => self::STATUS_COMPLETE,
 				'skipped'  => true,
 			);
 		}
@@ -108,27 +142,55 @@ class Scheduler {
 			$start_time = microtime( true );
 
 			// Analyze all posts and calculate decay scores
-			$analyzed = $this->analyzer->analyze_all();
+			$outcome  = $this->analyzer->analyze_all();
+			$analyzed = (int) ( $outcome['analyzed'] ?? 0 );
+			$failed   = (int) ( $outcome['failed'] ?? 0 );
+			$status   = self::status_for( $analyzed, $failed, ! empty( $outcome['cursor_saved'] ) );
 
 			$duration = round( microtime( true ) - $start_time, 2 );
 
 			// Log completion
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-				error_log( "DCD: Sync complete. Analyzed {$analyzed} posts in {$duration}s" ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				error_log( "DCD: Sync {$status}. Analyzed {$analyzed} posts, {$failed} failed to save, in {$duration}s" ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
 			}
 
-			// Update last sync time
+			// Record the outcome for the dashboard
 			update_option( 'dragoncontentdecay_last_sync', time() );
 			update_option( 'dragoncontentdecay_last_sync_count', $analyzed );
+			update_option( 'dragoncontentdecay_last_sync_failed', $failed );
+			update_option( 'dragoncontentdecay_last_sync_status', $status );
 
 			return array(
 				'synced'   => $analyzed,
 				'analyzed' => $analyzed,
+				'failed'   => $failed,
+				'status'   => $status,
 			);
 		} finally {
 			$this->release_lock();
 		}
+	}
+
+	/**
+	 * Classify a run: failed when writes were attempted and none succeeded,
+	 * partial when any write or the cursor save failed, complete otherwise.
+	 *
+	 * @param int  $analyzed     Score rows written.
+	 * @param int  $failed       Score rows that could not be written.
+	 * @param bool $cursor_saved Whether the rotating cursor persisted.
+	 * @return string One of the STATUS_* constants.
+	 */
+	private static function status_for( int $analyzed, int $failed, bool $cursor_saved ): string {
+		if ( $failed > 0 && 0 === $analyzed ) {
+			return self::STATUS_FAILED;
+		}
+
+		if ( $failed > 0 || ! $cursor_saved ) {
+			return self::STATUS_PARTIAL;
+		}
+
+		return self::STATUS_COMPLETE;
 	}
 
 	/**
@@ -181,6 +243,8 @@ class Scheduler {
 			'timestamp' => $timestamp,
 			'formatted' => $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : __( 'Never', 'dragon-content-decay' ),
 			'count'     => $count,
+			'failed'    => (int) get_option( 'dragoncontentdecay_last_sync_failed', 0 ),
+			'status'    => (string) get_option( 'dragoncontentdecay_last_sync_status', self::STATUS_COMPLETE ),
 		);
 	}
 

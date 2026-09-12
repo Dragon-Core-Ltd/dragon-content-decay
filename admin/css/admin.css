@@ -115,6 +115,11 @@
     font-size: 13px;
 }
 
+.dcd-sync-warning {
+    color: #b45309;
+    font-size: 13px;
+}
+
 .dcd-sync-button {
     display: inline-flex;
     align-items: center;

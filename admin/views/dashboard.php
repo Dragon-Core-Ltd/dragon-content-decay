@@ -90,6 +90,18 @@ defined( 'ABSPATH' ) || exit;
 				);
 				?>
 			</span>
+			<?php if ( ! empty( $last_sync['status'] ) && \DragonContentDecay\Scheduler::STATUS_COMPLETE !== $last_sync['status'] ) : ?>
+				<span class="dcd-sync-warning">
+					<?php
+					printf(
+						/* translators: 1: Number of posts analyzed, 2: Number of posts whose score could not be saved */
+						esc_html__( 'Last sync finished with errors: %1$d posts analyzed, %2$d could not be saved.', 'dragon-content-decay' ),
+						(int) ( $last_sync['count'] ?? 0 ),
+						(int) ( $last_sync['failed'] ?? 0 )
+					);
+					?>
+				</span>
+			<?php endif; ?>
 			<button type="button" class="button dcd-sync-button" id="dcd-manual-sync">
 				<span class="dashicons dashicons-update"></span>
 				<?php esc_html_e( 'Sync Now', 'dragon-content-decay' ); ?>
