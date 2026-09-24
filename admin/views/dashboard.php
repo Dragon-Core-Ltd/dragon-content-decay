@@ -27,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
 		<div class="dragon-card dragon-firstrun" style="max-width:640px;margin:12px 0;">
 			<h2 style="margin-top:0;"><?php esc_html_e( 'Get set up in two minutes', 'dragon-content-decay' ); ?></h2>
 			<ol style="margin:0 0 12px 18px;">
-				<li><?php esc_html_e( 'Connect your Google account — the plugin only requests read access to Analytics.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Connect your Google account - the plugin only requests read access to Analytics.', 'dragon-content-decay' ); ?></li>
 				<li><?php esc_html_e( 'Pick the GA4 property for this site.', 'dragon-content-decay' ); ?></li>
 				<li><?php esc_html_e( 'The first scan compares recent traffic to your baseline and flags the posts losing ground.', 'dragon-content-decay' ); ?></li>
 			</ol>
@@ -43,7 +43,7 @@ defined( 'ABSPATH' ) || exit;
 					<span class="dashicons dashicons-arrow-down-alt"></span>
 				</div>
 				<div class="dcd-card-content">
-					<div class="dcd-card-value"><?php echo esc_html( $summary['decaying'] ); ?></div>
+					<div class="dcd-card-value"><?php echo esc_html( number_format_i18n( (int) $summary['decaying'] ) ); ?></div>
 					<div class="dcd-card-label"><?php esc_html_e( 'Decaying Posts', 'dragon-content-decay' ); ?></div>
 				</div>
 			</div>
@@ -53,7 +53,7 @@ defined( 'ABSPATH' ) || exit;
 					<span class="dashicons dashicons-minus"></span>
 				</div>
 				<div class="dcd-card-content">
-					<div class="dcd-card-value"><?php echo esc_html( $summary['stable'] ); ?></div>
+					<div class="dcd-card-value"><?php echo esc_html( number_format_i18n( (int) $summary['stable'] ) ); ?></div>
 					<div class="dcd-card-label"><?php esc_html_e( 'Stable Posts', 'dragon-content-decay' ); ?></div>
 				</div>
 			</div>
@@ -63,7 +63,7 @@ defined( 'ABSPATH' ) || exit;
 					<span class="dashicons dashicons-arrow-up-alt"></span>
 				</div>
 				<div class="dcd-card-content">
-					<div class="dcd-card-value"><?php echo esc_html( $summary['growing'] ); ?></div>
+					<div class="dcd-card-value"><?php echo esc_html( number_format_i18n( (int) $summary['growing'] ) ); ?></div>
 					<div class="dcd-card-label"><?php esc_html_e( 'Growing Posts', 'dragon-content-decay' ); ?></div>
 				</div>
 			</div>
@@ -73,7 +73,7 @@ defined( 'ABSPATH' ) || exit;
 					<span class="dashicons dashicons-analytics"></span>
 				</div>
 				<div class="dcd-card-content">
-					<div class="dcd-card-value"><?php echo esc_html( $summary['total'] ); ?></div>
+					<div class="dcd-card-value"><?php echo esc_html( number_format_i18n( (int) $summary['total'] ) ); ?></div>
 					<div class="dcd-card-label"><?php esc_html_e( 'Total Tracked', 'dragon-content-decay' ); ?></div>
 				</div>
 			</div>
@@ -94,10 +94,10 @@ defined( 'ABSPATH' ) || exit;
 				<span class="dcd-sync-warning">
 					<?php
 					printf(
-						/* translators: 1: Number of posts analyzed, 2: Number of posts whose score could not be saved */
-						esc_html__( 'Last sync finished with errors: %1$d posts analyzed, %2$d could not be saved.', 'dragon-content-decay' ),
-						(int) ( $last_sync['count'] ?? 0 ),
-						(int) ( $last_sync['failed'] ?? 0 )
+						/* translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved */
+						esc_html__( 'Last sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s.', 'dragon-content-decay' ),
+						esc_html( number_format_i18n( (int) ( $last_sync['count'] ?? 0 ) ) ),
+						esc_html( number_format_i18n( (int) ( $last_sync['failed'] ?? 0 ) ) )
 					);
 					?>
 				</span>
@@ -158,14 +158,17 @@ defined( 'ABSPATH' ) || exit;
 								</td>
 								<td class="column-decay">
 									<span class="dcd-score dcd-<?php echo esc_attr( $dragoncontentdecay_post['trend'] ); ?>">
-										<?php echo esc_html( number_format( $dragoncontentdecay_post['decay_score'], 1 ) ); ?>%
+										<?php
+										/* translators: %s: Decay score percentage */
+										echo esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $dragoncontentdecay_post['decay_score'], 1 ) ) );
+										?>
 									</span>
 								</td>
 								<td class="column-views">
-									<?php echo esc_html( number_format( $dragoncontentdecay_post['pageviews_current'] ) ); ?>
+									<?php echo esc_html( number_format_i18n( (int) $dragoncontentdecay_post['pageviews_current'] ) ); ?>
 								</td>
 								<td class="column-previous">
-									<?php echo esc_html( number_format( $dragoncontentdecay_post['pageviews_previous'] ) ); ?>
+									<?php echo esc_html( number_format_i18n( (int) $dragoncontentdecay_post['pageviews_previous'] ) ); ?>
 								</td>
 								<?php if ( $dragoncontentdecay_gsc_on ) : ?>
 								<td class="column-search">
@@ -173,9 +176,14 @@ defined( 'ABSPATH' ) || exit;
 									$dragoncontentdecay_sc = (int) ( $dragoncontentdecay_post['search_clicks_current'] ?? 0 );
 									$dragoncontentdecay_sp = (int) ( $dragoncontentdecay_post['search_clicks_previous'] ?? 0 );
 									$dragoncontentdecay_sd = $dragoncontentdecay_sc - $dragoncontentdecay_sp;
-									echo esc_html( number_format( $dragoncontentdecay_sc ) );
+									echo esc_html( number_format_i18n( $dragoncontentdecay_sc ) );
 									if ( 0 !== $dragoncontentdecay_sd ) {
-										echo ' <span class="description">(' . esc_html( ( $dragoncontentdecay_sd > 0 ? '+' : '' ) . number_format( $dragoncontentdecay_sd ) ) . ')</span>';
+										$dragoncontentdecay_sd_label = $dragoncontentdecay_sd > 0
+											/* translators: %s: Increase in search clicks versus the previous period */
+											? sprintf( __( '(+%s)', 'dragon-content-decay' ), number_format_i18n( $dragoncontentdecay_sd ) )
+											/* translators: %s: Decrease in search clicks versus the previous period, without the minus sign */
+											: sprintf( __( '(-%s)', 'dragon-content-decay' ), number_format_i18n( abs( $dragoncontentdecay_sd ) ) );
+										echo ' <span class="description">' . esc_html( $dragoncontentdecay_sd_label ) . '</span>';
 									}
 									?>
 								</td>

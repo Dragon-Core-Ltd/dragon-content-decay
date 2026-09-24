@@ -9,6 +9,7 @@
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: dragon-content-decay
+ * Domain Path: /languages
  * Requires at least: 6.0
  * Requires PHP: 8.0
  */
@@ -58,6 +59,14 @@ function dragoncontentdecay_deactivate() {
 	Plugin::deactivate();
 }
 register_deactivation_hook( __FILE__, __NAMESPACE__ . '\dragoncontentdecay_deactivate' );
+
+/**
+ * Load bundled translations.
+ */
+function dragoncontentdecay_load_textdomain() {
+	load_plugin_textdomain( 'dragon-content-decay', false, dirname( DRAGONCONTENTDECAY_PLUGIN_BASENAME ) . '/languages' );
+}
+add_action( 'init', __NAMESPACE__ . '\dragoncontentdecay_load_textdomain', 0 );
 
 /**
  * Initialize the plugin

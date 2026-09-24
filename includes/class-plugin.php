@@ -62,6 +62,7 @@ class Plugin {
 	 */
 	private function __construct() {
 		self::migrate_legacy_prefix();
+		add_action( 'init', array( __CLASS__, 'migrate_legacy_cron' ) );
 		self::maybe_upgrade();
 		$this->init_components();
 	}
@@ -124,7 +125,13 @@ class Plugin {
 				delete_option( 'dcd_' . $name );
 			}
 		}
+	}
 
+	/**
+	 * Re-point pre-1.0.1 (dcd_) cron events at the renamed hooks. Runs on
+	 * init: scheduling events earlier is not supported by WP-Cron.
+	 */
+	public static function migrate_legacy_cron(): void {
 		$crons = array(
 			'dcd_daily_sync'     => 'dragoncontentdecay_daily_sync',
 			'dcd_weekly_digest'  => 'dragoncontentdecay_weekly_digest',

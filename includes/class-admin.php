@@ -60,13 +60,54 @@ class Admin {
 	 */
 	public function add_admin_menu(): void {
 		// Main page under Tools menu
-		add_management_page(
+		$hook = add_management_page(
 			__( 'Dragon Content Decay', 'dragon-content-decay' ),
 			__( 'Content Decay', 'dragon-content-decay' ),
 			'manage_options',
 			'dragon-content-decay',
 			array( $this, 'render_admin_page' )
 		);
+		if ( $hook ) {
+			add_action( 'load-' . $hook, array( $this, 'handle_oauth_request' ) );
+		}
+	}
+
+	/**
+	 * Handle OAuth connect/disconnect/callback requests before any output,
+	 * so their redirects can be sent.
+	 */
+	public function handle_oauth_request(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading the current tab for routing only; no state change.
+		$tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : '';
+		if ( 'settings' !== $tab ) {
+			return;
+		}
+
+		// Handle OAuth actions (with CSRF protection)
+		if ( isset( $_GET['action'] ) ) {
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below for state-changing actions; OAuth callback is validated separately.
+			$action = sanitize_text_field( wp_unslash( $_GET['action'] ) );
+
+			// Verify nonce for connect/disconnect actions
+			if ( in_array( $action, array( 'connect', 'disconnect' ), true ) ) {
+				if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
+					wp_die(
+						esc_html__( 'Security check failed. Please try again.', 'dragon-content-decay' ),
+						esc_html__( 'Error', 'dragon-content-decay' ),
+						array(
+							'response'  => 403,
+							'back_link' => true,
+						)
+					);
+				}
+			}
+
+			$this->handle_oauth_action( $action );
+		}
 	}
 
 	/**
@@ -165,28 +206,6 @@ class Admin {
 		// Handle form submission
 		if ( isset( $_POST['dragoncontentdecay_settings_nonce'] ) && wp_verify_nonce( sanitize_key( wp_unslash( $_POST['dragoncontentdecay_settings_nonce'] ) ), 'dragoncontentdecay_save_settings' ) ) {
 			$this->save_settings();
-		}
-
-		// Handle OAuth actions (with CSRF protection)
-		if ( isset( $_GET['action'] ) ) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below for state-changing actions; OAuth callback is validated separately.
-			$action = sanitize_text_field( wp_unslash( $_GET['action'] ) );
-
-			// Verify nonce for connect/disconnect actions
-			if ( in_array( $action, array( 'connect', 'disconnect' ), true ) ) {
-				if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
-					wp_die(
-						esc_html__( 'Security check failed. Please try again.', 'dragon-content-decay' ),
-						esc_html__( 'Error', 'dragon-content-decay' ),
-						array(
-							'response'  => 403,
-							'back_link' => true,
-						)
-					);
-				}
-			}
-
-			$this->handle_oauth_action( $action );
 		}
 
 		// Get current settings
@@ -339,6 +358,12 @@ class Admin {
 				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&connected=1' ) );
 				exit;
 			}
+			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=callback' ) );
+			exit;
+			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Google's error redirect carries no WordPress nonce; it only leads to a display-only notice.
+		} elseif ( 'callback' === $action && isset( $_GET['error'] ) ) {
+			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=denied' ) );
+			exit;
 		}
 	}
 
@@ -406,9 +431,10 @@ class Admin {
 		}
 
 		printf(
-			'<span class="dcd-score %s">%s%%</span>',
+			'<span class="dcd-score %s">%s</span>',
 			esc_attr( $class ),
-			esc_html( number_format( $score->decay_score, 1 ) )
+			/* translators: %s: Decay score percentage */
+			esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $score->decay_score, 1 ) ) )
 		);
 	}
 

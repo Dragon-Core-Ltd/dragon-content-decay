@@ -39,6 +39,21 @@ defined( 'ABSPATH' ) || exit;
 		</div>
 	<?php endif; ?>
 
+	<?php
+	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only error notice flag; no state change.
+	$dragoncontentdecay_oauth_error = isset( $_GET['oauth_error'] ) ? sanitize_key( wp_unslash( $_GET['oauth_error'] ) ) : '';
+	$dragoncontentdecay_oauth_errors = array(
+		'state'    => __( 'Google sign-in could not be verified (the request expired or did not start from this site). Please connect again.', 'dragon-content-decay' ),
+		'callback' => __( 'Google sign-in did not complete, so the site was not connected. Check the Client ID and Client Secret, then connect again.', 'dragon-content-decay' ),
+		'denied'   => __( 'Google sign-in was cancelled or access was not granted, so the site was not connected.', 'dragon-content-decay' ),
+	);
+	?>
+	<?php if ( isset( $dragoncontentdecay_oauth_errors[ $dragoncontentdecay_oauth_error ] ) ) : ?>
+		<div class="notice notice-error is-dismissible">
+			<p><?php echo esc_html( $dragoncontentdecay_oauth_errors[ $dragoncontentdecay_oauth_error ] ); ?></p>
+		</div>
+	<?php endif; ?>
+
 	<form method="post" action="">
 		<?php wp_nonce_field( 'dragoncontentdecay_save_settings', 'dragoncontentdecay_settings_nonce' ); ?>
 
@@ -129,7 +144,7 @@ defined( 'ABSPATH' ) || exit;
 						<td>
 							<?php if ( ! empty( $settings['gsc_sites'] ) ) : ?>
 								<select id="dragoncontentdecay_gsc_property" name="dragoncontentdecay_gsc_property">
-									<option value=""><?php esc_html_e( '— Select a property —', 'dragon-content-decay' ); ?></option>
+									<option value=""><?php esc_html_e( '- Select a property -', 'dragon-content-decay' ); ?></option>
 									<?php foreach ( $settings['gsc_sites'] as $dragoncontentdecay_site ) : ?>
 										<option value="<?php echo esc_attr( $dragoncontentdecay_site ); ?>" <?php selected( $settings['gsc_property'], $dragoncontentdecay_site ); ?>>
 											<?php echo esc_html( $dragoncontentdecay_site ); ?>
@@ -189,7 +204,7 @@ defined( 'ABSPATH' ) || exit;
 			<table class="form-table">
 				<tr>
 					<th scope="row">
-						<label for="dragoncontentdecay_decay_threshold"><?php esc_html_e( 'Decay Threshold', 'dragon-content-decay' ); ?></label>
+						<label for="dragoncontentdecay_decay_threshold"><?php esc_html_e( 'Decay Threshold (%)', 'dragon-content-decay' ); ?></label>
 					</th>
 					<td>
 						<input type="number"
@@ -199,7 +214,6 @@ defined( 'ABSPATH' ) || exit;
 								min="-100"
 								max="0"
 								class="small-text">
-						<span>%</span>
 						<p class="description">
 							<?php esc_html_e( 'Posts with traffic change below this threshold will be marked as decaying. Default: -20%', 'dragon-content-decay' ); ?>
 						</p>

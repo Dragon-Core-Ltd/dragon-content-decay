@@ -72,10 +72,10 @@ class Scheduler {
 			wp_send_json_error(
 				array(
 					'message'  => sprintf(
-						/* translators: 1: Number of posts analyzed, 2: Number of posts whose score could not be saved */
-						__( 'Sync finished with errors. Analyzed %1$d posts; %2$d could not be saved. Check the database and try again.', 'dragon-content-decay' ),
-						$result['analyzed'],
-						$result['failed']
+						/* translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved */
+						__( 'Sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s. Check the database and try again.', 'dragon-content-decay' ),
+						number_format_i18n( (int) $result['analyzed'] ),
+						number_format_i18n( (int) $result['failed'] )
 					),
 					'analyzed' => $result['analyzed'],
 					'failed'   => $result['failed'],
@@ -87,9 +87,9 @@ class Scheduler {
 		wp_send_json_success(
 			array(
 				'message'  => sprintf(
-					/* translators: %d: Number of posts analyzed */
-					__( 'Sync complete. Analyzed %d posts.', 'dragon-content-decay' ),
-					$result['analyzed']
+					/* translators: %s: Number of posts analyzed */
+					_n( 'Sync complete. Analyzed %s post.', 'Sync complete. Analyzed %s posts.', (int) $result['analyzed'], 'dragon-content-decay' ),
+					number_format_i18n( (int) $result['analyzed'] )
 				),
 				'analyzed' => $result['analyzed'],
 				'synced'   => $result['synced'],

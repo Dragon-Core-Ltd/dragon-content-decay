@@ -1,0 +1,551 @@
+# Copyright (C) 2026 Dragon Core
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Dragon Content Decay 1.0.12\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/dragon-content-decay\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-09-24T17:14:05+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.11.0\n"
+"X-Domain: dragon-content-decay\n"
+
+#. Plugin Name of the plugin
+#: dragon-content-decay.php
+#: admin/views/dashboard.php:14
+#: admin/views/settings.php:14
+#: includes/class-admin.php:64
+msgid "Dragon Content Decay"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: dragon-content-decay.php
+msgid "https://dragoncore.ltd/plugins/dragon-content-decay"
+msgstr ""
+
+#. Description of the plugin
+#: dragon-content-decay.php
+msgid "Identify content losing traffic over time by connecting to Google Analytics 4. Helps prioritize which posts to refresh."
+msgstr ""
+
+#. Author of the plugin
+#: dragon-content-decay.php
+msgid "Dragon Core"
+msgstr ""
+
+#. Author URI of the plugin
+#: dragon-content-decay.php
+msgid "https://dragoncore.ltd"
+msgstr ""
+
+#: admin/views/dashboard.php:19
+#: admin/views/settings.php:19
+msgid "Dashboard"
+msgstr ""
+
+#: admin/views/dashboard.php:22
+#: admin/views/settings.php:22
+#: dragon-content-decay.php:89
+msgid "Settings"
+msgstr ""
+
+#: admin/views/dashboard.php:28
+msgid "Get set up in two minutes"
+msgstr ""
+
+#: admin/views/dashboard.php:30
+msgid "Connect your Google account - the plugin only requests read access to Analytics."
+msgstr ""
+
+#: admin/views/dashboard.php:31
+msgid "Pick the GA4 property for this site."
+msgstr ""
+
+#: admin/views/dashboard.php:32
+msgid "The first scan compares recent traffic to your baseline and flags the posts losing ground."
+msgstr ""
+
+#: admin/views/dashboard.php:35
+msgid "Connect Google Analytics"
+msgstr ""
+
+#: admin/views/dashboard.php:47
+msgid "Decaying Posts"
+msgstr ""
+
+#: admin/views/dashboard.php:57
+msgid "Stable Posts"
+msgstr ""
+
+#: admin/views/dashboard.php:67
+msgid "Growing Posts"
+msgstr ""
+
+#: admin/views/dashboard.php:77
+msgid "Total Tracked"
+msgstr ""
+
+#. translators: %s: Last sync time
+#: admin/views/dashboard.php:88
+msgid "Last synced: %s"
+msgstr ""
+
+#. translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved
+#: admin/views/dashboard.php:98
+msgid "Last sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s."
+msgstr ""
+
+#: admin/views/dashboard.php:107
+msgid "Sync Now"
+msgstr ""
+
+#: admin/views/dashboard.php:114
+msgid "Content Performance"
+msgstr ""
+
+#: admin/views/dashboard.php:116
+msgid "Filter by trend"
+msgstr ""
+
+#: admin/views/dashboard.php:118
+msgid "All Trends"
+msgstr ""
+
+#: admin/views/dashboard.php:119
+#: includes/class-admin.php:194
+#: includes/class-notifications.php:162
+msgid "Decaying"
+msgstr ""
+
+#: admin/views/dashboard.php:120
+#: includes/class-admin.php:195
+#: includes/class-notifications.php:166
+msgid "Stable"
+msgstr ""
+
+#: admin/views/dashboard.php:121
+#: includes/class-admin.php:196
+#: includes/class-notifications.php:170
+msgid "Growing"
+msgstr ""
+
+#: admin/views/dashboard.php:130
+msgid "Post Title"
+msgstr ""
+
+#: admin/views/dashboard.php:131
+msgid "Decay Score"
+msgstr ""
+
+#: admin/views/dashboard.php:132
+msgid "Current Views"
+msgstr ""
+
+#: admin/views/dashboard.php:133
+msgid "Previous Views"
+msgstr ""
+
+#: admin/views/dashboard.php:135
+msgid "Search Clicks"
+msgstr ""
+
+#: admin/views/dashboard.php:137
+msgid "Trend"
+msgstr ""
+
+#: admin/views/dashboard.php:138
+msgid "Last Updated"
+msgstr ""
+
+#: admin/views/dashboard.php:139
+msgid "Actions"
+msgstr ""
+
+#: admin/views/dashboard.php:146
+msgid "No data available. Click \"Sync Now\" to fetch analytics data."
+msgstr ""
+
+#. translators: %s: Decay score percentage
+#: admin/views/dashboard.php:163
+#: includes/class-admin.php:437
+#: includes/class-notifications.php:184
+msgid "%s%%"
+msgstr ""
+
+#. translators: %s: Increase in search clicks versus the previous period
+#: admin/views/dashboard.php:183
+msgid "(+%s)"
+msgstr ""
+
+#. translators: %s: Decrease in search clicks versus the previous period, without the minus sign
+#: admin/views/dashboard.php:185
+msgid "(-%s)"
+msgstr ""
+
+#: admin/views/dashboard.php:202
+#: includes/class-notifications.php:197
+msgid "Edit"
+msgstr ""
+
+#: admin/views/settings.php:31
+msgid "Successfully connected to Google Analytics!"
+msgstr ""
+
+#: admin/views/settings.php:38
+msgid "Disconnected from Google Analytics."
+msgstr ""
+
+#: admin/views/settings.php:46
+msgid "Google sign-in could not be verified (the request expired or did not start from this site). Please connect again."
+msgstr ""
+
+#: admin/views/settings.php:47
+msgid "Google sign-in did not complete, so the site was not connected. Check the Client ID and Client Secret, then connect again."
+msgstr ""
+
+#: admin/views/settings.php:48
+msgid "Google sign-in was cancelled or access was not granted, so the site was not connected."
+msgstr ""
+
+#: admin/views/settings.php:64
+msgid "Google API Configuration"
+msgstr ""
+
+#. translators: %s: Google Cloud Console URL
+#: admin/views/settings.php:71
+msgid "Create OAuth credentials in the %s to connect with Google Analytics."
+msgstr ""
+
+#: admin/views/settings.php:80
+msgid "Client ID"
+msgstr ""
+
+#: admin/views/settings.php:88
+msgid "Paste the client ID from your Google Cloud OAuth credentials"
+msgstr ""
+
+#: admin/views/settings.php:93
+msgid "Client Secret"
+msgstr ""
+
+#: admin/views/settings.php:106
+msgid "GA4 Property ID"
+msgstr ""
+
+#: admin/views/settings.php:116
+msgid "Find this in Google Analytics > Admin > Property Settings"
+msgstr ""
+
+#: admin/views/settings.php:121
+msgid "Search Console"
+msgstr ""
+
+#: admin/views/settings.php:125
+msgid "Also pull Google Search Console data (search clicks & impressions) alongside GA4"
+msgstr ""
+
+#: admin/views/settings.php:128
+msgid "Enable the Search Console API in your Google Cloud project first. After turning this on and saving, reconnect to Google to grant Search Console access."
+msgstr ""
+
+#: admin/views/settings.php:133
+msgid "Reconnect to Google to grant Search Console access."
+msgstr ""
+
+#: admin/views/settings.php:134
+msgid "Reconnect now"
+msgstr ""
+
+#: admin/views/settings.php:142
+msgid "Search Console property"
+msgstr ""
+
+#: admin/views/settings.php:147
+msgid "- Select a property -"
+msgstr ""
+
+#: admin/views/settings.php:155
+msgid "No Search Console properties were found for this Google account."
+msgstr ""
+
+#: admin/views/settings.php:158
+msgid "Connect and grant Search Console access to choose a property."
+msgstr ""
+
+#: admin/views/settings.php:165
+msgid "Connection Status"
+msgstr ""
+
+#: admin/views/settings.php:170
+msgid "Connected"
+msgstr ""
+
+#: admin/views/settings.php:174
+msgid "Disconnect"
+msgstr ""
+
+#: admin/views/settings.php:179
+msgid "Not Connected"
+msgstr ""
+
+#: admin/views/settings.php:184
+msgid "Connect to Google"
+msgstr ""
+
+#: admin/views/settings.php:188
+msgid "Enter your Client ID and Secret above, save settings, then connect."
+msgstr ""
+
+#: admin/views/settings.php:201
+msgid "Analysis Settings"
+msgstr ""
+
+#: admin/views/settings.php:207
+msgid "Decay Threshold (%)"
+msgstr ""
+
+#: admin/views/settings.php:218
+msgid "Posts with traffic change below this threshold will be marked as decaying. Default: -20%"
+msgstr ""
+
+#: admin/views/settings.php:224
+msgid "Comparison Period"
+msgstr ""
+
+#: admin/views/settings.php:229
+msgid "30 days"
+msgstr ""
+
+#: admin/views/settings.php:232
+msgid "60 days"
+msgstr ""
+
+#: admin/views/settings.php:235
+msgid "90 days"
+msgstr ""
+
+#: admin/views/settings.php:239
+msgid "Compare traffic over this period vs the previous period of the same length."
+msgstr ""
+
+#: admin/views/settings.php:244
+msgid "Post Types to Track"
+msgstr ""
+
+#: admin/views/settings.php:269
+msgid "Email Notifications"
+msgstr ""
+
+#: admin/views/settings.php:275
+msgid "Email Digest"
+msgstr ""
+
+#: admin/views/settings.php:280
+msgid "Off"
+msgstr ""
+
+#: admin/views/settings.php:283
+msgid "Weekly"
+msgstr ""
+
+#: admin/views/settings.php:286
+msgid "Monthly"
+msgstr ""
+
+#. translators: %s: Admin email
+#: admin/views/settings.php:293
+msgid "Digest emails will be sent to: %s"
+msgstr ""
+
+#: admin/views/settings.php:303
+msgid "Uninstall"
+msgstr ""
+
+#: admin/views/settings.php:306
+msgid "Delete data on uninstall"
+msgstr ""
+
+#: admin/views/settings.php:310
+msgid "Remove settings, Google credentials and analytics history when the plugin is deleted. Leave off to keep them through a reinstall."
+msgstr ""
+
+#: admin/views/settings.php:316
+msgid "Save Settings"
+msgstr ""
+
+#: admin/views/settings.php:323
+msgid "Setup Guide"
+msgstr ""
+
+#: admin/views/settings.php:330
+msgid "Create Google Cloud Project"
+msgstr ""
+
+#: admin/views/settings.php:331
+msgid "Go to Google Cloud Console and create a new project (or select an existing one)."
+msgstr ""
+
+#: admin/views/settings.php:333
+msgid "Open Cloud Console"
+msgstr ""
+
+#: admin/views/settings.php:341
+msgid "Enable Analytics Data API"
+msgstr ""
+
+#: admin/views/settings.php:342
+msgid "Enable the Google Analytics Data API for your project."
+msgstr ""
+
+#: admin/views/settings.php:344
+msgid "Enable API"
+msgstr ""
+
+#: admin/views/settings.php:352
+msgid "Create OAuth Credentials"
+msgstr ""
+
+#: admin/views/settings.php:353
+msgid "Create OAuth 2.0 credentials (Web application type)."
+msgstr ""
+
+#: admin/views/settings.php:355
+msgid "Authorized redirect URI:"
+msgstr ""
+
+#: admin/views/settings.php:364
+msgid "Find Your GA4 Property ID"
+msgstr ""
+
+#: admin/views/settings.php:365
+msgid "In Google Analytics, go to Admin → Property Settings to find your Property ID (numeric)."
+msgstr ""
+
+#: includes/class-admin.php:65
+msgid "Content Decay"
+msgstr ""
+
+#: includes/class-admin.php:99
+msgid "Security check failed. Please try again."
+msgstr ""
+
+#: includes/class-admin.php:100
+msgid "Error"
+msgstr ""
+
+#: includes/class-admin.php:118
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: includes/class-admin.php:169
+msgid "Syncing..."
+msgstr ""
+
+#: includes/class-admin.php:170
+msgid "Sync complete!"
+msgstr ""
+
+#: includes/class-admin.php:171
+msgid "An error occurred."
+msgstr ""
+
+#: includes/class-admin.php:323
+msgid "Settings saved."
+msgstr ""
+
+#: includes/class-admin.php:397
+msgid "Decay"
+msgstr ""
+
+#: includes/class-admin.php:502
+msgid "View Analytics"
+msgstr ""
+
+#. translators: 1: Site name, 2: Number of decaying posts
+#: includes/class-notifications.php:89
+msgid "[%1$s] Content Decay Alert: %2$s post needs attention"
+msgid_plural "[%1$s] Content Decay Alert: %2$s posts need attention"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-notifications.php:114
+msgid "Weekly Summary"
+msgstr ""
+
+#: includes/class-notifications.php:114
+msgid "Monthly Summary"
+msgstr ""
+
+#: includes/class-notifications.php:146
+msgid "Content Decay Report"
+msgstr ""
+
+#. translators: 1: Site name, 2: Digest period, e.g. "Weekly Summary"
+#: includes/class-notifications.php:151
+msgid "%1$s - %2$s"
+msgstr ""
+
+#: includes/class-notifications.php:174
+msgid "Posts Needing Attention"
+msgstr ""
+
+#. translators: 1: Current views, 2: Previous views
+#: includes/class-notifications.php:191
+msgid "%1$s view (was %2$s)"
+msgid_plural "%1$s views (was %2$s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-notifications.php:205
+msgid "View Full Dashboard"
+msgstr ""
+
+#: includes/class-notifications.php:210
+msgid "This email was sent by Dragon Content Decay plugin."
+msgstr ""
+
+#: includes/class-notifications.php:211
+msgid "Manage notification settings"
+msgstr ""
+
+#. translators: %s: Site name
+#: includes/class-notifications.php:254
+msgid "[%s] Content Decay - Test Email"
+msgstr ""
+
+#. translators: %s: Site name
+#: includes/class-notifications.php:260
+msgid "This is a test email from Dragon Content Decay on %s. If you received this, email notifications are working correctly."
+msgstr ""
+
+#: includes/class-scheduler.php:58
+msgid "Permission denied."
+msgstr ""
+
+#: includes/class-scheduler.php:67
+msgid "A sync is already running. Please try again in a moment."
+msgstr ""
+
+#. translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved
+#: includes/class-scheduler.php:76
+msgid "Sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s. Check the database and try again."
+msgstr ""
+
+#. translators: %s: Number of posts analyzed
+#: includes/class-scheduler.php:91
+msgid "Sync complete. Analyzed %s post."
+msgid_plural "Sync complete. Analyzed %s posts."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/class-scheduler.php:244
+msgid "Never"
+msgstr ""
+
+#: includes/class-scheduler.php:260
+msgid "Not scheduled"
+msgstr ""

@@ -83,11 +83,12 @@ class Notifications {
 		$admin_email = get_option( 'admin_email' );
 		$site_name   = get_bloginfo( 'name' );
 
-		$subject = sprintf(
+		$decaying = (int) $summary['decaying'];
+		$subject  = sprintf(
 			/* translators: 1: Site name, 2: Number of decaying posts */
-			__( '[%1$s] Content Decay Alert: %2$d posts need attention', 'dragon-content-decay' ),
+			_n( '[%1$s] Content Decay Alert: %2$s post needs attention', '[%1$s] Content Decay Alert: %2$s posts need attention', $decaying, 'dragon-content-decay' ),
 			$site_name,
-			$summary['decaying']
+			number_format_i18n( $decaying )
 		);
 
 		$message = $this->build_email_message( $decaying_posts, $summary, $type );
@@ -110,7 +111,7 @@ class Notifications {
 	 */
 	private function build_email_message( array $posts, array $summary, string $type ): string {
 		$site_name = get_bloginfo( 'name' );
-		$period    = 'weekly' === $type ? __( 'week', 'dragon-content-decay' ) : __( 'month', 'dragon-content-decay' );
+		$period    = 'weekly' === $type ? __( 'Weekly Summary', 'dragon-content-decay' ) : __( 'Monthly Summary', 'dragon-content-decay' );
 
 		ob_start();
 		?>
@@ -142,21 +143,30 @@ class Notifications {
 		<body>
 			<div class="container">
 				<div class="header">
-					<h1 style="margin: 0;">Content Decay Report</h1>
-					<p style="margin: 10px 0 0; opacity: 0.9;"><?php echo esc_html( $site_name ); ?> - <?php echo esc_html( ucfirst( $period ) ); ?>ly Summary</p>
+					<h1 style="margin: 0;"><?php esc_html_e( 'Content Decay Report', 'dragon-content-decay' ); ?></h1>
+					<p style="margin: 10px 0 0; opacity: 0.9;">
+						<?php
+						printf(
+							/* translators: 1: Site name, 2: Digest period, e.g. "Weekly Summary" */
+							esc_html__( '%1$s - %2$s', 'dragon-content-decay' ),
+							esc_html( $site_name ),
+							esc_html( $period )
+						);
+						?>
+					</p>
 				</div>
 				<div class="content">
 					<div class="stats">
 						<div class="stat">
-							<div class="stat-value"><?php echo esc_html( $summary['decaying'] ); ?></div>
+							<div class="stat-value"><?php echo esc_html( number_format_i18n( (int) $summary['decaying'] ) ); ?></div>
 							<div class="stat-label"><?php esc_html_e( 'Decaying', 'dragon-content-decay' ); ?></div>
 						</div>
 						<div class="stat">
-							<div class="stat-value"><?php echo esc_html( $summary['stable'] ); ?></div>
+							<div class="stat-value"><?php echo esc_html( number_format_i18n( (int) $summary['stable'] ) ); ?></div>
 							<div class="stat-label"><?php esc_html_e( 'Stable', 'dragon-content-decay' ); ?></div>
 						</div>
 						<div class="stat">
-							<div class="stat-value"><?php echo esc_html( $summary['growing'] ); ?></div>
+							<div class="stat-value"><?php echo esc_html( number_format_i18n( (int) $summary['growing'] ) ); ?></div>
 							<div class="stat-label"><?php esc_html_e( 'Growing', 'dragon-content-decay' ); ?></div>
 						</div>
 					</div>
@@ -169,15 +179,18 @@ class Notifications {
 								<div class="post-title"><?php echo esc_html( $post['post_title'] ); ?></div>
 								<div class="post-meta">
 									<span class="decay-badge <?php echo $post['decay_score'] <= -50 ? 'decay-red' : 'decay-yellow'; ?>">
-										<?php echo esc_html( $post['decay_score'] ); ?>%
+										<?php
+										/* translators: %s: Decay score percentage */
+										echo esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $post['decay_score'], 1 ) ) );
+										?>
 									</span>
 									&middot;
 									<?php
 									printf(
 										/* translators: 1: Current views, 2: Previous views */
-										esc_html__( '%1$d views (was %2$d)', 'dragon-content-decay' ),
-										absint( $post['pageviews_current'] ),
-										absint( $post['pageviews_previous'] )
+										esc_html( _n( '%1$s view (was %2$s)', '%1$s views (was %2$s)', absint( $post['pageviews_current'] ), 'dragon-content-decay' ) ),
+										esc_html( number_format_i18n( absint( $post['pageviews_current'] ) ) ),
+										esc_html( number_format_i18n( absint( $post['pageviews_previous'] ) ) )
 									);
 									?>
 									&middot;
