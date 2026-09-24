@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.12
+Stable tag: 1.0.13
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -129,6 +129,11 @@ Data syncs automatically once a day. You can also press Sync now on the dashboar
 
 == Changelog ==
 
+= 1.0.13 =
+* Fixed: connecting, disconnecting and the Google sign-in callback now redirect correctly.
+* A failed or cancelled Google sign-in now shows a message instead of returning silently.
+* Every screen, email and alert is now translatable, and translations bundled in the plugin's languages folder now load. Counts use proper plural forms, and numbers and dates follow your site's language.
+
 = 1.0.12 =
 * Fixed: Search Console figures for a page were being overwritten when the same page appeared under more than one address (for example www and non-www, or http and https, as a Domain property reports). Clicks and impressions from all of a page's addresses are now added together, and the average position is weighted by impressions.
 * Fixed: only Search Console rows for this site's own domain are counted (www and non-www both count as this site); other subdomains in a Domain property no longer leak into the figures. The new `dragoncontentdecay_gsc_site_hosts` filter lets you add a property host that differs from your WordPress home URL.
@@ -203,6 +208,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.13 =
+Connecting and disconnecting Google now works reliably.
 
 = 1.0.12 =
 Fixes Search Console figures being overwritten across www/non-www addresses and not matching posts on trailing-slash differences. Run a sync after updating.

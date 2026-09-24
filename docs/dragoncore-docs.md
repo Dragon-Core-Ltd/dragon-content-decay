@@ -25,6 +25,7 @@ Search Console rows are matched to your posts by path, so a page counts once whe
 OAuth tokens are stored encrypted in your database; traffic data is fetched from your own GA4 property (and, if enabled, your own Search Console property) and cached locally. Nothing is shared with anyone. **Uninstall keeps data by default** (`wp option update dragoncontentdecay_delete_data_on_uninstall 1` to opt into deletion).
 
 ## Troubleshooting
+- **A message after returning from Google** - a cancelled or refused sign-in, a sign-in that did not complete (check the Client ID and Client Secret) or one that expired or did not start from this site each leave the site unconnected and say which; connect again.
 - **"Connect" fails after approving** - check the property picker: the Google account must have access to the GA4 property for this domain.
 - **Numbers look different from GA4's UI** - the plugin reads sessions per page path; GA4's UI often shows filtered/modelled views.
 - **Search Console shows no data** - confirm the Search Console API is enabled in your Google Cloud project and that you reconnected after ticking the option; Search Console data also lags real time by 2–3 days.
