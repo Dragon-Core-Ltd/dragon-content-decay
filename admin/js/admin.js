@@ -5,6 +5,13 @@
 (function($) {
     'use strict';
 
+    // Icon plus text, with the (translated) text added as a text node.
+    function setLabel($button, icon, text) {
+        $button.empty()
+            .append($('<span class="dashicons"></span>').addClass(icon))
+            .append(document.createTextNode(' ' + text));
+    }
+
     // Manual sync button
     $('#dcd-manual-sync').on('click', function(e) {
         e.preventDefault();
@@ -14,7 +21,7 @@
 
         // Disable button and show loading state
         $button.prop('disabled', true).addClass('syncing');
-        $button.html('<span class="dashicons dashicons-update"></span> ' + dcdAdmin.i18n.syncing);
+        setLabel($button, 'dashicons-update', dcdAdmin.i18n.syncing);
 
         $.ajax({
             url: dcdAdmin.ajaxUrl,
@@ -26,14 +33,14 @@
             success: function(response) {
                 if (response.success) {
                     // Show success message
-                    $button.html('<span class="dashicons dashicons-yes"></span> ' + dcdAdmin.i18n.synced);
+                    setLabel($button, 'dashicons-yes', dcdAdmin.i18n.synced);
 
                     // Reload page after short delay to show updated data
                     setTimeout(function() {
                         location.reload();
                     }, 1500);
                 } else {
-                    alert(response.data.message || dcdAdmin.i18n.error);
+                    alert((response.data && response.data.message) || dcdAdmin.i18n.error);
                     $button.prop('disabled', false).removeClass('syncing');
                     $button.html(originalText);
                 }
