@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.13
+Stable tag: 1.0.14
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -134,6 +134,13 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 
 == Changelog ==
 
+= 1.0.14 =
+* Fixed: the monthly digest is sent.
+* Fixed: a failed Google Analytics or Search Console request no longer scores posts against zero; the sync stops and shows the reason.
+* Large sites: Analytics and Search Console results are read in pages instead of being cut off.
+* Token refresh backs off after a failure and never runs on visitor page loads.
+* Digest emails have working edit links, show your site name correctly and no longer set their own sender address.
+
 = 1.0.13 =
 * Fixed: connecting, disconnecting and the Google sign-in callback now redirect correctly.
 * A failed or cancelled Google sign-in now shows a message instead of returning silently.
@@ -213,6 +220,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.14 =
+More reliable syncing and digests.
 
 = 1.0.13 =
 Connecting and disconnecting Google now works reliably.
