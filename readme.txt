@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.14
+Stable tag: 1.0.15
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,6 +136,14 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 
 == Changelog ==
 
+= 1.0.15 =
+* A post's score adds up all its Analytics addresses, so paged and feed views no longer overwrite it.
+* Sites installed in a subfolder are matched correctly.
+* Only the post types you track are scored and shown, over full days ending yesterday.
+* Posts scored from partial Analytics data are marked, and an unfinished manual sync carries on instead of reporting success.
+* Setup steps include the Google consent screen, and errors are shown in plain language.
+* The daily sync reschedules itself if it goes missing, on every site of a network.
+
 = 1.0.14 =
 * Fixed: the monthly digest is sent.
 * Fixed: a failed Google Analytics or Search Console request no longer scores posts against zero; the sync stops and shows the reason.
@@ -222,6 +230,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.15 =
+Scores add up every address of a post, and subfolder installs work.
 
 = 1.0.14 =
 More reliable syncing and digests.
