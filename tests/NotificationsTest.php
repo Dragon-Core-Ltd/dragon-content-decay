@@ -229,6 +229,38 @@ final class NotificationsTest extends TestCase {
 		$this->assertStringContainsString( 'No GA4 property ID is set on the Settings tab.', $message );
 	}
 
+	public function test_digest_does_not_claim_a_previous_sync_that_never_happened(): void {
+		update_option( 'dragoncontentdecay_email_frequency', 'weekly' );
+		update_option( 'dragoncontentdecay_last_sync_error', 'Plain message.' );
+
+		$this->notifications()->send_weekly_digest();
+
+		$message = $GLOBALS['dragoncontentdecay_test_mail'][0]['message'];
+		$this->assertStringContainsString( 'The last sync failed', $message );
+		$this->assertStringNotContainsString( 'previous successful sync', $message );
+	}
+
+	public function test_digest_says_the_scores_are_older_after_a_good_sync(): void {
+		update_option( 'dragoncontentdecay_email_frequency', 'weekly' );
+		update_option( 'dragoncontentdecay_last_sync', 1000 );
+		update_option( 'dragoncontentdecay_last_sync_error', 'Plain message.' );
+
+		$this->notifications()->send_weekly_digest();
+
+		$this->assertStringContainsString( 'previous successful sync', $GLOBALS['dragoncontentdecay_test_mail'][0]['message'] );
+	}
+
+	public function test_revoked_digest_before_any_sync_does_not_mention_a_last_sync(): void {
+		update_option( 'dragoncontentdecay_email_frequency', 'weekly' );
+		update_option( 'dragoncontentdecay_google_auth_revoked', 1 );
+
+		$this->notifications()->send_weekly_digest();
+
+		$message = $GLOBALS['dragoncontentdecay_test_mail'][0]['message'];
+		$this->assertStringContainsString( 'syncing has stopped', $message );
+		$this->assertStringNotContainsString( 'last successful sync', $message );
+	}
+
 	public function test_a_healthy_digest_has_no_sync_warning(): void {
 		update_option( 'dragoncontentdecay_email_frequency', 'weekly' );
 

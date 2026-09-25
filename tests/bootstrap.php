@@ -667,6 +667,7 @@ function dragoncontentdecay_test_reset(): void {
 
 require_once __DIR__ . '/../includes/class-crypto.php';
 require_once __DIR__ . '/../includes/class-oauth.php';
+require_once __DIR__ . '/../includes/class-error-text.php';
 require_once __DIR__ . '/../includes/class-api-ga4.php';
 require_once __DIR__ . '/../includes/class-api-gsc.php';
 require_once __DIR__ . '/../includes/class-analyzer.php';

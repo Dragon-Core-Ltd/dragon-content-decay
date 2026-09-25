@@ -164,17 +164,27 @@ class Notifications {
 	 * @return string
 	 */
 	private static function sync_warning(): string {
+		$had_success = Scheduler::has_successful_sync();
+
 		if ( OAuth::is_access_revoked() ) {
-			return __( 'Google no longer accepts this site\'s saved sign-in, so syncing has stopped and the scores below are from the last successful sync. Connect to Google again on the Settings tab to resume.', 'dragon-content-decay' );
+			return $had_success
+				? __( 'Google no longer accepts this site\'s saved sign-in, so syncing has stopped and the scores below are from the last successful sync. Connect to Google again on the Settings tab to resume.', 'dragon-content-decay' )
+				: __( 'Google no longer accepts this site\'s saved sign-in, so syncing has stopped. Connect to Google again on the Settings tab to resume.', 'dragon-content-decay' );
 		}
 
 		$error = (string) get_option( 'dragoncontentdecay_last_sync_error', '' );
 		if ( '' !== $error ) {
-			return sprintf(
-				/* translators: %s: why the analytics data could not be fetched */
-				__( 'The last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
-				$error
-			);
+			return $had_success
+				? sprintf(
+					/* translators: %s: why the analytics data could not be fetched */
+					__( 'The last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
+					$error
+				)
+				: sprintf(
+					/* translators: %s: why the analytics data could not be fetched */
+					__( 'The last sync failed and no sync has succeeded yet, so there are no scores. %s', 'dragon-content-decay' ),
+					$error
+				);
 		}
 
 		return '';

@@ -43,14 +43,15 @@ class Analyzer {
 	/**
 	 * Calculate decay scores for all posts
 	 *
-	 * @return array{analyzed:int,failed:int,cursor_saved:bool,pending?:bool,error?:string,search_error?:string}
+	 * @return array{analyzed:int,failed:int,cursor_saved:bool,pending?:bool,error?:string,error_detail?:string,search_error?:string,search_error_detail?:string}
 	 *               Posts scored, posts whose score row could not be written,
 	 *               whether the partly resolved paths were persisted for the
 	 *               next run, whether the run ran out of time before every
 	 *               path was matched to a post (nothing is scored then),
 	 *               why the run was aborted when the GA4 data could not be
 	 *               fetched, and why the Search Console data could not be
-	 *               fetched (the stored search columns are then kept).
+	 *               fetched (the stored search columns are then kept). The
+	 *               *_detail keys hold the raw text behind each error.
 	 */
 	public function analyze_all(): array {
 		$period_days = (int) get_option( 'dragoncontentdecay_comparison_period', 30 );
@@ -65,6 +66,7 @@ class Analyzer {
 				'failed'       => 0,
 				'cursor_saved' => true,
 				'error'        => $fetch_error,
+				'error_detail' => (string) ( $data['error_detail'] ?? '' ),
 			);
 		}
 
@@ -131,11 +133,12 @@ class Analyzer {
 		// Optional Google Search Console signal, keyed by the same normalised
 		// paths. A failed fetch is not zero clicks: the stored search columns
 		// are then left as they were and the reason is reported.
-		$gsc                    = $this->maybe_fetch_gsc( $period_days );
-		$search_error           = (string) ( $gsc['error'] ?? '' );
-		$keep_search            = '' !== $search_error;
-		$result['search_error'] = $search_error;
-		$search_truncated       = array(
+		$gsc                           = $this->maybe_fetch_gsc( $period_days );
+		$search_error                  = (string) ( $gsc['error'] ?? '' );
+		$keep_search                   = '' !== $search_error;
+		$result['search_error']        = $search_error;
+		$result['search_error_detail'] = (string) ( $gsc['error_detail'] ?? '' );
+		$search_truncated              = array(
 			'current'  => ! empty( $gsc['truncated']['current'] ),
 			'previous' => ! empty( $gsc['truncated']['previous'] ),
 		);

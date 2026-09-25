@@ -38,6 +38,7 @@ require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-crypto.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-plugin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-admin.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-oauth.php';
+require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-error-text.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-api-ga4.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-api-gsc.php';
 require_once DRAGONCONTENTDECAY_PLUGIN_DIR . 'includes/class-analyzer.php';

@@ -41,6 +41,12 @@ class API_GA4 {
 	private string $last_error = '';
 
 	/**
+	 * The raw text behind $last_error when it came from a failed request
+	 * (technical detail for display), or ''.
+	 */
+	private string $last_error_detail = '';
+
+	/**
 	 * Whether the most recent fetch_pageviews() result is only the top of a
 	 * report too large to read in full.
 	 */
@@ -138,8 +144,9 @@ class API_GA4 {
 	 * @return array Array of [page_path => pageviews]
 	 */
 	public function fetch_pageviews( string $start_date, string $end_date ): array {
-		$this->last_error     = '';
-		$this->last_truncated = false;
+		$this->last_error        = '';
+		$this->last_error_detail = '';
+		$this->last_truncated    = false;
 
 		$property_id = $this->get_property_id();
 		if ( empty( $property_id ) ) {
@@ -230,11 +237,8 @@ class API_GA4 {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'DCD GA4 API Error: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
 			}
-			$this->last_error = sprintf(
-				/* translators: %s: error message returned by Google */
-				__( 'The Google Analytics request failed: %s', 'dragon-content-decay' ),
-				self::short_message( $e->getMessage() )
-			);
+			$this->last_error        = Error_Text::message( Error_Text::classify_exception( $e ), Error_Text::SERVICE_GA4 );
+			$this->last_error_detail = Error_Text::detail( $e->getMessage() );
 			return array();
 		}
 	}
@@ -319,36 +323,26 @@ class API_GA4 {
 	}
 
 	/**
-	 * Reduce a Google API exception message (often a JSON document) to one
-	 * readable line.
+	 * The raw text Google or the HTTP library returned for the most recent
+	 * failed request ('' if none), for display as technical detail.
 	 *
-	 * @param string $message Raw exception message.
 	 * @return string
 	 */
-	private static function short_message( string $message ): string {
-		$decoded = json_decode( $message, true );
-		if ( is_array( $decoded ) && isset( $decoded['message'] ) && is_string( $decoded['message'] ) ) {
-			$message = $decoded['message'];
-		}
-
-		$message = trim( (string) preg_replace( '/\s+/', ' ', $message ) );
-		if ( strlen( $message ) > 300 ) {
-			$message = substr( $message, 0, 297 ) . '...';
-		}
-
-		return '' === $message ? __( 'unknown error', 'dragon-content-decay' ) : $message;
+	public function get_last_error_detail(): string {
+		return $this->last_error_detail;
 	}
 
 	/**
 	 * Fetch pageviews for comparison periods
 	 *
 	 * @param int $period_days Number of days to compare (30, 60, 90)
-	 * @return array ['current' => [...], 'previous' => [...], 'error' => string, 'truncated' => ['current' => bool, 'previous' => bool]]
+	 * @return array ['current' => [...], 'previous' => [...], 'error' => string, 'error_detail' => string, 'truncated' => ['current' => bool, 'previous' => bool]]
 	 *               'error' is non-empty when either request failed, in which
 	 *               case the data must not be scored: a missing period would
 	 *               read as zero views. 'truncated' marks a period whose report
 	 *               was too large to read in full, where a missing path does
-	 *               not mean zero views.
+	 *               not mean zero views. 'error_detail' is the raw text
+	 *               behind 'error' when a request failed.
 	 */
 	public function fetch_comparison_data( int $period_days = 30 ): array {
 		$ranges         = self::comparison_ranges( $period_days, new \DateTimeImmutable( 'now' ) );
@@ -359,15 +353,17 @@ class API_GA4 {
 
 		$current           = $this->fetch_pageviews( $current_start, $current_end );
 		$current_error     = $this->last_error;
+		$current_detail    = $this->last_error_detail;
 		$current_truncated = $this->last_truncated;
 
 		$previous = '' === $current_error ? $this->fetch_pageviews( $previous_start, $previous_end ) : array();
 
 		return array(
-			'current'   => $current,
-			'previous'  => $previous,
-			'error'     => '' !== $current_error ? $current_error : $this->last_error,
-			'truncated' => array(
+			'current'      => $current,
+			'previous'     => $previous,
+			'error'        => '' !== $current_error ? $current_error : $this->last_error,
+			'error_detail' => '' !== $current_error ? $current_detail : $this->last_error_detail,
+			'truncated'    => array(
 				'current'  => $current_truncated,
 				'previous' => '' === $current_error && $this->last_truncated,
 			),

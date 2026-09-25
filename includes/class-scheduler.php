@@ -230,6 +230,7 @@ class Scheduler {
 
 				update_option( 'dragoncontentdecay_last_sync_status', self::STATUS_FAILED );
 				update_option( 'dragoncontentdecay_last_sync_error', $error, false );
+				self::store_detail( 'dragoncontentdecay_last_sync_error_detail', (string) ( $outcome['error_detail'] ?? '' ) );
 
 				return array(
 					'synced'   => 0,
@@ -276,14 +277,17 @@ class Scheduler {
 			update_option( 'dragoncontentdecay_last_sync_failed', $failed );
 			update_option( 'dragoncontentdecay_last_sync_status', $status );
 			delete_option( 'dragoncontentdecay_last_sync_error' );
+			delete_option( 'dragoncontentdecay_last_sync_error_detail' );
 
 			// Pageviews were scored, but a failed Search Console fetch left the
 			// search columns at their previous values: say why.
 			$search_error = (string) ( $outcome['search_error'] ?? '' );
 			if ( '' !== $search_error ) {
 				update_option( 'dragoncontentdecay_last_search_error', $search_error, false );
+				self::store_detail( 'dragoncontentdecay_last_search_error_detail', (string) ( $outcome['search_error_detail'] ?? '' ) );
 			} else {
 				delete_option( 'dragoncontentdecay_last_search_error' );
+				delete_option( 'dragoncontentdecay_last_search_error_detail' );
 			}
 
 			return array(
@@ -309,9 +313,36 @@ class Scheduler {
 		}
 
 		delete_option( 'dragoncontentdecay_last_sync_error' );
+		delete_option( 'dragoncontentdecay_last_sync_error_detail' );
 		if ( self::STATUS_FAILED === get_option( 'dragoncontentdecay_last_sync_status' ) ) {
 			delete_option( 'dragoncontentdecay_last_sync_status' );
 		}
+	}
+
+	/**
+	 * Store the raw text behind an error, or remove a stale one when there is
+	 * none, so the detail never outlives or mismatches its error.
+	 *
+	 * @param string $option Option name.
+	 * @param string $detail Raw error text.
+	 */
+	private static function store_detail( string $option, string $detail ): void {
+		if ( '' === $detail ) {
+			delete_option( $option );
+			return;
+		}
+
+		update_option( $option, $detail, false );
+	}
+
+	/**
+	 * Whether a sync has ever completed, so older scores exist to fall back
+	 * on when a later sync fails.
+	 *
+	 * @return bool
+	 */
+	public static function has_successful_sync(): bool {
+		return (int) get_option( 'dragoncontentdecay_last_sync', 0 ) > 0;
 	}
 
 	/**
@@ -382,13 +413,15 @@ class Scheduler {
 		$count     = get_option( 'dragoncontentdecay_last_sync_count', 0 );
 
 		return array(
-			'timestamp'    => $timestamp,
-			'formatted'    => $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : __( 'Never', 'dragon-content-decay' ),
-			'count'        => $count,
-			'failed'       => (int) get_option( 'dragoncontentdecay_last_sync_failed', 0 ),
-			'status'       => (string) get_option( 'dragoncontentdecay_last_sync_status', self::STATUS_COMPLETE ),
-			'error'        => (string) get_option( 'dragoncontentdecay_last_sync_error', '' ),
-			'search_error' => (string) get_option( 'dragoncontentdecay_last_search_error', '' ),
+			'timestamp'           => $timestamp,
+			'formatted'           => $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : __( 'Never', 'dragon-content-decay' ),
+			'count'               => $count,
+			'failed'              => (int) get_option( 'dragoncontentdecay_last_sync_failed', 0 ),
+			'status'              => (string) get_option( 'dragoncontentdecay_last_sync_status', self::STATUS_COMPLETE ),
+			'error'               => (string) get_option( 'dragoncontentdecay_last_sync_error', '' ),
+			'error_detail'        => (string) get_option( 'dragoncontentdecay_last_sync_error_detail', '' ),
+			'search_error'        => (string) get_option( 'dragoncontentdecay_last_search_error', '' ),
+			'search_error_detail' => (string) get_option( 'dragoncontentdecay_last_search_error_detail', '' ),
 		);
 	}
 

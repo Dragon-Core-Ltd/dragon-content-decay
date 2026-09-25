@@ -45,7 +45,7 @@ defined( 'ABSPATH' ) || exit;
 	$dragoncontentdecay_oauth_errors = array(
 		'state'    => __( 'Google sign-in could not be verified (the request expired or did not start from this site). Please connect again.', 'dragon-content-decay' ),
 		'callback' => __( 'Google sign-in did not complete, so the site was not connected. Check the Client ID and Client Secret, then connect again.', 'dragon-content-decay' ),
-		'denied'   => __( 'Google sign-in was cancelled or access was not granted, so the site was not connected.', 'dragon-content-decay' ),
+		'denied'   => __( 'Google sign-in was cancelled or access was not granted, so the site was not connected. If Google said access is blocked, add your Google account as a test user on the OAuth consent screen, or publish the app, then connect again.', 'dragon-content-decay' ),
 	);
 	?>
 	<?php if ( isset( $dragoncontentdecay_oauth_errors[ $dragoncontentdecay_oauth_error ] ) ) : ?>
@@ -355,6 +355,19 @@ defined( 'ABSPATH' ) || exit;
 			<div class="dcd-step">
 				<div class="dcd-step-number">3</div>
 				<div class="dcd-step-content">
+					<h4><?php esc_html_e( 'Configure the OAuth Consent Screen', 'dragon-content-decay' ); ?></h4>
+					<p><?php esc_html_e( 'Set up the OAuth consent screen (Google Auth Platform) for the project: choose External as the user type (or Internal if you use Google Workspace and connect with an account in that organisation), and fill in the app name and your email address.', 'dragon-content-decay' ); ?></p>
+					<p><?php esc_html_e( 'A new External app starts in Testing, where only the test users you list can sign in, and Google expires their sign-in after 7 days. Either publish the app (Publish app, under Audience) so the connection lasts, or add the Google account you will connect with as a test user and reconnect when it expires.', 'dragon-content-decay' ); ?></p>
+					<p><?php esc_html_e( 'Because the app is your own, Google may show "Google hasn\'t verified this app" when you connect. Choose Advanced, then continue to your app.', 'dragon-content-decay' ); ?></p>
+					<a href="https://console.cloud.google.com/auth/overview" target="_blank" class="button button-secondary">
+						<?php esc_html_e( 'Open Consent Screen', 'dragon-content-decay' ); ?>
+					</a>
+				</div>
+			</div>
+
+			<div class="dcd-step">
+				<div class="dcd-step-number">4</div>
+				<div class="dcd-step-content">
 					<h4><?php esc_html_e( 'Create OAuth Credentials', 'dragon-content-decay' ); ?></h4>
 					<p><?php esc_html_e( 'Create OAuth 2.0 credentials (Web application type).', 'dragon-content-decay' ); ?></p>
 					<p>
@@ -365,7 +378,7 @@ defined( 'ABSPATH' ) || exit;
 			</div>
 
 			<div class="dcd-step">
-				<div class="dcd-step-number">4</div>
+				<div class="dcd-step-number">5</div>
 				<div class="dcd-step-content">
 					<h4><?php esc_html_e( 'Find Your GA4 Property ID', 'dragon-content-decay' ); ?></h4>
 					<p><?php esc_html_e( 'In Google Analytics, go to Admin → Property Settings to find your Property ID (numeric).', 'dragon-content-decay' ); ?></p>

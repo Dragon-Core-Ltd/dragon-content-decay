@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T08:34:45+00:00\n"
+"POT-Creation-Date: 2026-09-25T09:34:30+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: dragon-content-decay\n"
@@ -49,196 +49,222 @@ msgstr ""
 
 #: admin/views/dashboard.php:22
 #: admin/views/settings.php:22
-#: dragon-content-decay.php:89
+#: dragon-content-decay.php:90
 msgid "Settings"
 msgstr ""
 
 #: admin/views/dashboard.php:28
-msgid "Get set up in two minutes"
+msgid "Get set up in about 10-15 minutes"
 msgstr ""
 
-#: admin/views/dashboard.php:30
-msgid "Connect your Google account - the plugin only requests read access to Analytics."
+#: admin/views/dashboard.php:29
+msgid "The plugin reads your analytics with your own Google Cloud credentials, so the first setup takes a few steps in Google Cloud Console. The Setup Guide on the Settings tab walks through each one."
 msgstr ""
 
 #: admin/views/dashboard.php:31
-msgid "Enter the GA4 Property ID for this site on the Settings tab."
+msgid "In Google Cloud Console, create a project and enable the Google Analytics Data API."
 msgstr ""
 
 #: admin/views/dashboard.php:32
-msgid "The first scan compares recent traffic to your baseline and flags the posts losing ground."
+msgid "Configure the OAuth consent screen (External), then publish the app, or add your Google account as a test user while it is in Testing."
+msgstr ""
+
+#: admin/views/dashboard.php:33
+msgid "Create an OAuth client (Web application) with the redirect URI shown on the Settings tab, and paste its Client ID and Client Secret there."
+msgstr ""
+
+#: admin/views/dashboard.php:34
+msgid "Connect your Google account (the plugin only requests read access to Analytics) and enter the GA4 Property ID for this site."
 msgstr ""
 
 #: admin/views/dashboard.php:35
+msgid "The first scan compares recent traffic to your baseline and flags the posts losing ground."
+msgstr ""
+
+#: admin/views/dashboard.php:38
 msgid "Connect Google Analytics"
 msgstr ""
 
-#: admin/views/dashboard.php:42
+#: admin/views/dashboard.php:46
 msgid "Google no longer accepts this site's saved sign-in (access was revoked or has expired), so syncing has stopped. The scores below are from the last successful sync."
 msgstr ""
 
-#: admin/views/dashboard.php:43
+#: admin/views/dashboard.php:48
+msgid "Google no longer accepts this site's saved sign-in (access was revoked or has expired), so syncing has stopped."
+msgstr ""
+
+#: admin/views/dashboard.php:50
 msgid "Connect to Google again"
 msgstr ""
 
-#: admin/views/dashboard.php:55
+#: admin/views/dashboard.php:62
 msgid "Decaying Posts"
 msgstr ""
 
-#: admin/views/dashboard.php:65
+#: admin/views/dashboard.php:72
 msgid "Stable Posts"
 msgstr ""
 
-#: admin/views/dashboard.php:75
+#: admin/views/dashboard.php:82
 msgid "Growing Posts"
 msgstr ""
 
-#: admin/views/dashboard.php:85
+#: admin/views/dashboard.php:92
 msgid "Total Tracked"
 msgstr ""
 
 #. translators: %s: Last sync time
-#: admin/views/dashboard.php:96
+#: admin/views/dashboard.php:103
 msgid "Last synced: %s"
 msgstr ""
 
 #. translators: %s: why the analytics data could not be fetched
-#: admin/views/dashboard.php:106
+#: admin/views/dashboard.php:114
 msgid "Last sync failed, so the scores below are from the previous successful sync. %s"
 msgstr ""
 
+#. translators: %s: why the analytics data could not be fetched
+#: admin/views/dashboard.php:120
+msgid "The sync failed, so there are no scores yet. %s"
+msgstr ""
+
+#: admin/views/dashboard.php:127
+#: admin/views/dashboard.php:155
+msgid "Technical details"
+msgstr ""
+
 #. translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved
-#: admin/views/dashboard.php:116
+#: admin/views/dashboard.php:137
 msgid "Last sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s."
 msgstr ""
 
 #. translators: %s: why the Search Console data could not be fetched
-#: admin/views/dashboard.php:128
+#: admin/views/dashboard.php:149
 msgid "Search Console data could not be fetched in the last sync, so the search columns below still show the previous values. %s"
 msgstr ""
 
-#: admin/views/dashboard.php:136
+#: admin/views/dashboard.php:163
 msgid "Sync Now"
 msgstr ""
 
 #. translators: %s: post title
-#: admin/views/dashboard.php:147
+#: admin/views/dashboard.php:174
 msgid "Analytics for \"%s\""
 msgstr ""
 
 #. translators: %s: Decay score percentage
-#: admin/views/dashboard.php:156
-#: admin/views/dashboard.php:242
+#: admin/views/dashboard.php:183
+#: admin/views/dashboard.php:269
 #: includes/class-admin.php:448
-#: includes/class-notifications.php:349
+#: includes/class-notifications.php:359
 msgid "%s%%"
 msgstr ""
 
-#: admin/views/dashboard.php:160
-#: admin/views/dashboard.php:246
+#: admin/views/dashboard.php:187
+#: admin/views/dashboard.php:273
 msgid "Google Analytics returned only the busiest pages for this period, and some of this post's addresses were not among them, so its views may be higher than shown."
 msgstr ""
 
-#: admin/views/dashboard.php:161
-#: admin/views/dashboard.php:247
+#: admin/views/dashboard.php:188
+#: admin/views/dashboard.php:274
 msgid "Partial data"
 msgstr ""
 
 #. translators: 1: Current views, 2: Previous views
-#: admin/views/dashboard.php:170
+#: admin/views/dashboard.php:197
 msgid "%1$s view this period (previous period: %2$s)"
 msgid_plural "%1$s views this period (previous period: %2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: post title
-#: admin/views/dashboard.php:181
+#: admin/views/dashboard.php:208
 msgid "No analytics data yet for \"%s\". It appears here after a sync once Google Analytics has recorded views for it."
 msgstr ""
 
-#: admin/views/dashboard.php:193
+#: admin/views/dashboard.php:220
 msgid "Content Performance"
 msgstr ""
 
-#: admin/views/dashboard.php:195
+#: admin/views/dashboard.php:222
 msgid "Filter by trend"
 msgstr ""
 
-#: admin/views/dashboard.php:197
+#: admin/views/dashboard.php:224
 msgid "All Trends"
 msgstr ""
 
-#: admin/views/dashboard.php:198
+#: admin/views/dashboard.php:225
 #: includes/class-admin.php:207
-#: includes/class-notifications.php:327
+#: includes/class-notifications.php:337
 msgid "Decaying"
 msgstr ""
 
-#: admin/views/dashboard.php:199
+#: admin/views/dashboard.php:226
 #: includes/class-admin.php:208
-#: includes/class-notifications.php:331
+#: includes/class-notifications.php:341
 msgid "Stable"
 msgstr ""
 
-#: admin/views/dashboard.php:200
+#: admin/views/dashboard.php:227
 #: includes/class-admin.php:209
-#: includes/class-notifications.php:335
+#: includes/class-notifications.php:345
 msgid "Growing"
 msgstr ""
 
-#: admin/views/dashboard.php:209
+#: admin/views/dashboard.php:236
 msgid "Post Title"
 msgstr ""
 
-#: admin/views/dashboard.php:210
+#: admin/views/dashboard.php:237
 msgid "Decay Score"
 msgstr ""
 
-#: admin/views/dashboard.php:211
+#: admin/views/dashboard.php:238
 msgid "Current Views"
 msgstr ""
 
-#: admin/views/dashboard.php:212
+#: admin/views/dashboard.php:239
 msgid "Previous Views"
 msgstr ""
 
-#: admin/views/dashboard.php:214
+#: admin/views/dashboard.php:241
 msgid "Search Clicks"
 msgstr ""
 
-#: admin/views/dashboard.php:216
+#: admin/views/dashboard.php:243
 msgid "Trend"
 msgstr ""
 
-#: admin/views/dashboard.php:217
+#: admin/views/dashboard.php:244
 msgid "Last Updated"
 msgstr ""
 
-#: admin/views/dashboard.php:218
+#: admin/views/dashboard.php:245
 msgid "Actions"
 msgstr ""
 
-#: admin/views/dashboard.php:225
+#: admin/views/dashboard.php:252
 msgid "No data available. Click \"Sync Now\" to fetch analytics data."
 msgstr ""
 
 #. translators: %s: Increase in search clicks versus the previous period
-#: admin/views/dashboard.php:267
+#: admin/views/dashboard.php:294
 msgid "(+%s)"
 msgstr ""
 
 #. translators: %s: Decrease in search clicks versus the previous period, without the minus sign
-#: admin/views/dashboard.php:269
+#: admin/views/dashboard.php:296
 msgid "(-%s)"
 msgstr ""
 
-#: admin/views/dashboard.php:286
-#: includes/class-notifications.php:362
+#: admin/views/dashboard.php:313
+#: includes/class-notifications.php:372
 msgid "Edit"
 msgstr ""
 
 #. translators: 1: number of posts listed, 2: number of posts tracked
-#: admin/views/dashboard.php:299
+#: admin/views/dashboard.php:326
 msgid "Showing the %1$s lowest-scoring post of %2$s tracked."
 msgid_plural "Showing the %1$s lowest-scoring posts of %2$s tracked."
 msgstr[0] ""
@@ -261,7 +287,7 @@ msgid "Google sign-in did not complete, so the site was not connected. Check the
 msgstr ""
 
 #: admin/views/settings.php:48
-msgid "Google sign-in was cancelled or access was not granted, so the site was not connected."
+msgid "Google sign-in was cancelled or access was not granted, so the site was not connected. If Google said access is blocked, add your Google account as a test user on the OAuth consent screen, or publish the app, then connect again."
 msgstr ""
 
 #: admin/views/settings.php:59
@@ -463,22 +489,42 @@ msgid "Enable API"
 msgstr ""
 
 #: admin/views/settings.php:358
-msgid "Create OAuth Credentials"
+msgid "Configure the OAuth Consent Screen"
 msgstr ""
 
 #: admin/views/settings.php:359
-msgid "Create OAuth 2.0 credentials (Web application type)."
+msgid "Set up the OAuth consent screen (Google Auth Platform) for the project: choose External as the user type (or Internal if you use Google Workspace and connect with an account in that organisation), and fill in the app name and your email address."
+msgstr ""
+
+#: admin/views/settings.php:360
+msgid "A new External app starts in Testing, where only the test users you list can sign in, and Google expires their sign-in after 7 days. Either publish the app (Publish app, under Audience) so the connection lasts, or add the Google account you will connect with as a test user and reconnect when it expires."
 msgstr ""
 
 #: admin/views/settings.php:361
-msgid "Authorized redirect URI:"
+msgid "Because the app is your own, Google may show \"Google hasn't verified this app\" when you connect. Choose Advanced, then continue to your app."
 msgstr ""
 
-#: admin/views/settings.php:370
-msgid "Find Your GA4 Property ID"
+#: admin/views/settings.php:363
+msgid "Open Consent Screen"
 msgstr ""
 
 #: admin/views/settings.php:371
+msgid "Create OAuth Credentials"
+msgstr ""
+
+#: admin/views/settings.php:372
+msgid "Create OAuth 2.0 credentials (Web application type)."
+msgstr ""
+
+#: admin/views/settings.php:374
+msgid "Authorized redirect URI:"
+msgstr ""
+
+#: admin/views/settings.php:383
+msgid "Find Your GA4 Property ID"
+msgstr ""
+
+#: admin/views/settings.php:384
 msgid "In Google Analytics, go to Admin → Property Settings to find your Property ID (numeric)."
 msgstr ""
 
@@ -526,128 +572,170 @@ msgstr ""
 msgid "View Analytics"
 msgstr ""
 
-#: includes/class-api-ga4.php:146
+#: includes/class-api-ga4.php:153
 msgid "No GA4 property ID is set on the Settings tab."
 msgstr ""
 
-#. translators: %s: error message returned by Google
-#: includes/class-api-ga4.php:235
-msgid "The Google Analytics request failed: %s"
-msgstr ""
-
-#: includes/class-api-ga4.php:301
+#: includes/class-api-ga4.php:305
 msgid "Google no longer accepts the saved sign-in (access was revoked or has expired). Connect to Google again on the Settings tab."
 msgstr ""
 
-#: includes/class-api-ga4.php:305
+#: includes/class-api-ga4.php:309
 msgid "Google Analytics is not connected. Connect it on the Settings tab."
 msgstr ""
 
-#: includes/class-api-ga4.php:308
+#: includes/class-api-ga4.php:312
 msgid "The Google sign-in could not be refreshed just now, so Google Analytics could not be reached. The next sync will try again."
 msgstr ""
 
-#: includes/class-api-ga4.php:339
-msgid "unknown error"
-msgstr ""
-
-#: includes/class-api-gsc.php:121
+#: includes/class-api-gsc.php:130
 msgid "No Search Console property is selected on the Settings tab."
 msgstr ""
 
-#: includes/class-api-gsc.php:127
+#: includes/class-api-gsc.php:136
 msgid "The Google sign-in could not be refreshed, so Search Console could not be reached."
 msgstr ""
 
-#: includes/class-api-gsc.php:276
-msgid "The Search Console request could not be sent (no response from Google)."
-msgstr ""
-
-#. translators: 1: HTTP status code, 2: error message returned by Google
-#: includes/class-api-gsc.php:282
-msgid "The Search Console request failed (HTTP %1$d): %2$s"
-msgstr ""
-
-#. translators: %d: HTTP status code
-#: includes/class-api-gsc.php:288
-msgid "The Search Console request failed (HTTP %d)."
-msgstr ""
-
-#: includes/class-api-gsc.php:294
+#: includes/class-api-gsc.php:297
 msgid "Search Console sent a response that could not be read."
+msgstr ""
+
+#: includes/class-error-text.php:142
+msgid "Search Console could not be reached (the connection failed or timed out). This is usually temporary; the next sync will try again."
+msgstr ""
+
+#: includes/class-error-text.php:143
+msgid "Google did not accept the saved sign-in for Search Console (it was revoked or has expired). Connect to Google again on the Settings tab."
+msgstr ""
+
+#: includes/class-error-text.php:144
+msgid "The Google Search Console API is not enabled in the Google Cloud project your Client ID belongs to. Enable it in Google Cloud Console, then sync again."
+msgstr ""
+
+#: includes/class-error-text.php:145
+msgid "Google refused access to the selected Search Console property. Check that the connected Google account can view that property, and that you reconnected after turning Search Console on."
+msgstr ""
+
+#: includes/class-error-text.php:146
+msgid "Search Console could not find the selected property. Choose the property again on the Settings tab."
+msgstr ""
+
+#: includes/class-error-text.php:147
+msgid "The Search Console usage limit has been reached for now. The next sync will try again."
+msgstr ""
+
+#: includes/class-error-text.php:148
+msgid "The Search Console request failed with an unexpected error. The next sync will try again."
+msgstr ""
+
+#: includes/class-error-text.php:152
+msgid "Google Analytics could not be reached (the connection failed or timed out). This is usually temporary; the next sync will try again."
+msgstr ""
+
+#: includes/class-error-text.php:153
+msgid "Google did not accept the saved sign-in (it was revoked or has expired). Connect to Google again on the Settings tab."
+msgstr ""
+
+#: includes/class-error-text.php:154
+msgid "The Google Analytics Data API is not enabled in the Google Cloud project your Client ID belongs to. Enable it in Google Cloud Console, then sync again."
+msgstr ""
+
+#: includes/class-error-text.php:155
+msgid "Google refused access to this GA4 property. Check the Property ID on the Settings tab, and that the connected Google account can view that property."
+msgstr ""
+
+#: includes/class-error-text.php:156
+msgid "Google Analytics could not find this GA4 property. Check the Property ID on the Settings tab: it is the number shown under Admin, Property settings."
+msgstr ""
+
+#: includes/class-error-text.php:157
+msgid "The Google Analytics usage limit for this property has been reached for now. The next sync will try again."
+msgstr ""
+
+#: includes/class-error-text.php:158
+msgid "The Google Analytics request failed with an unexpected error. The next sync will try again."
 msgstr ""
 
 #: includes/class-notifications.php:67
 msgid "Once Monthly"
 msgstr ""
 
-#: includes/class-notifications.php:168
+#: includes/class-notifications.php:171
 msgid "Google no longer accepts this site's saved sign-in, so syncing has stopped and the scores below are from the last successful sync. Connect to Google again on the Settings tab to resume."
 msgstr ""
 
+#: includes/class-notifications.php:172
+msgid "Google no longer accepts this site's saved sign-in, so syncing has stopped. Connect to Google again on the Settings tab to resume."
+msgstr ""
+
 #. translators: %s: why the analytics data could not be fetched
-#: includes/class-notifications.php:175
+#: includes/class-notifications.php:180
 msgid "The last sync failed, so the scores below are from the previous successful sync. %s"
 msgstr ""
 
+#. translators: %s: why the analytics data could not be fetched
+#: includes/class-notifications.php:185
+msgid "The last sync failed and no sync has succeeded yet, so there are no scores. %s"
+msgstr ""
+
 #. translators: 1: Site name, 2: Number of decaying posts
-#: includes/class-notifications.php:245
+#: includes/class-notifications.php:255
 msgid "[%1$s] Content Decay Alert: %2$s post needs attention"
 msgid_plural "[%1$s] Content Decay Alert: %2$s posts need attention"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-notifications.php:272
+#: includes/class-notifications.php:282
 msgid "Weekly Summary"
 msgstr ""
 
-#: includes/class-notifications.php:272
+#: includes/class-notifications.php:282
 msgid "Monthly Summary"
 msgstr ""
 
-#: includes/class-notifications.php:304
+#: includes/class-notifications.php:314
 msgid "Content Decay Report"
 msgstr ""
 
 #. translators: 1: Site name, 2: Digest period, e.g. "Weekly Summary"
-#: includes/class-notifications.php:309
+#: includes/class-notifications.php:319
 msgid "%1$s - %2$s"
 msgstr ""
 
-#: includes/class-notifications.php:321
+#: includes/class-notifications.php:331
 msgid "Open settings"
 msgstr ""
 
-#: includes/class-notifications.php:339
+#: includes/class-notifications.php:349
 msgid "Posts Needing Attention"
 msgstr ""
 
 #. translators: 1: Current views, 2: Previous views
-#: includes/class-notifications.php:356
+#: includes/class-notifications.php:366
 msgid "%1$s view (was %2$s)"
 msgid_plural "%1$s views (was %2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-notifications.php:370
+#: includes/class-notifications.php:380
 msgid "View Full Dashboard"
 msgstr ""
 
-#: includes/class-notifications.php:375
+#: includes/class-notifications.php:385
 msgid "This email was sent by Dragon Content Decay plugin."
 msgstr ""
 
-#: includes/class-notifications.php:376
+#: includes/class-notifications.php:386
 msgid "Manage notification settings"
 msgstr ""
 
 #. translators: %s: Site name
-#: includes/class-notifications.php:418
+#: includes/class-notifications.php:428
 msgid "[%s] Content Decay - Test Email"
 msgstr ""
 
 #. translators: %s: Site name
-#: includes/class-notifications.php:424
+#: includes/class-notifications.php:434
 msgid "This is a test email from Dragon Content Decay on %s. If you received this, email notifications are working correctly."
 msgstr ""
 
@@ -680,10 +768,10 @@ msgid_plural "Sync complete. Analyzed %s posts."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-scheduler.php:386
+#: includes/class-scheduler.php:417
 msgid "Never"
 msgstr ""
 
-#: includes/class-scheduler.php:404
+#: includes/class-scheduler.php:437
 msgid "Not scheduled"
 msgstr ""

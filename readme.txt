@@ -97,14 +97,16 @@ package's licence file is included alongside its source.
 5. Optionally turn on Search Console in Settings and reconnect to add search clicks and impressions
 6. View your content decay dashboard!
 
-**Google Cloud Setup:**
+**Google Cloud Setup (about 10-15 minutes):**
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
 3. Enable the Google Analytics Data API (and the Google Search Console API if you want the optional Search Console signal)
-4. Create OAuth 2.0 credentials (Web application)
-5. Add the redirect URI shown in plugin settings
-6. Copy Client ID and Secret to plugin settings
+4. Configure the OAuth consent screen: choose External as the user type (Internal if you use Google Workspace and connect with an account in that organisation) and fill in the app name and your email
+5. A new External app starts in Testing, where only listed test users can sign in and Google expires their sign-in after 7 days: publish the app so the connection lasts, or add the Google account you will connect with as a test user
+6. Create OAuth 2.0 credentials (Web application)
+7. Add the redirect URI shown in plugin settings
+8. Copy Client ID and Secret to plugin settings, save, then connect (if Google says the app is unverified, choose Advanced and continue: it is your own app)
 
 == Frequently Asked Questions ==
 

@@ -25,10 +25,13 @@ defined( 'ABSPATH' ) || exit;
 
 	<?php if ( ! $is_connected ) : ?>
 		<div class="dragon-card dragon-firstrun" style="max-width:640px;margin:12px 0;">
-			<h2 style="margin-top:0;"><?php esc_html_e( 'Get set up in two minutes', 'dragon-content-decay' ); ?></h2>
+			<h2 style="margin-top:0;"><?php esc_html_e( 'Get set up in about 10-15 minutes', 'dragon-content-decay' ); ?></h2>
+			<p><?php esc_html_e( 'The plugin reads your analytics with your own Google Cloud credentials, so the first setup takes a few steps in Google Cloud Console. The Setup Guide on the Settings tab walks through each one.', 'dragon-content-decay' ); ?></p>
 			<ol style="margin:0 0 12px 18px;">
-				<li><?php esc_html_e( 'Connect your Google account - the plugin only requests read access to Analytics.', 'dragon-content-decay' ); ?></li>
-				<li><?php esc_html_e( 'Enter the GA4 Property ID for this site on the Settings tab.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'In Google Cloud Console, create a project and enable the Google Analytics Data API.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Configure the OAuth consent screen (External), then publish the app, or add your Google account as a test user while it is in Testing.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Create an OAuth client (Web application) with the redirect URI shown on the Settings tab, and paste its Client ID and Client Secret there.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Connect your Google account (the plugin only requests read access to Analytics) and enter the GA4 Property ID for this site.', 'dragon-content-decay' ); ?></li>
 				<li><?php esc_html_e( 'The first scan compares recent traffic to your baseline and flags the posts losing ground.', 'dragon-content-decay' ); ?></li>
 			</ol>
 			<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>" class="button button-primary">
@@ -39,7 +42,11 @@ defined( 'ABSPATH' ) || exit;
 		<?php if ( $access_revoked ) : ?>
 			<div class="notice notice-error inline">
 				<p>
-					<?php esc_html_e( 'Google no longer accepts this site\'s saved sign-in (access was revoked or has expired), so syncing has stopped. The scores below are from the last successful sync.', 'dragon-content-decay' ); ?>
+					<?php if ( \DragonContentDecay\Scheduler::has_successful_sync() ) : ?>
+						<?php esc_html_e( 'Google no longer accepts this site\'s saved sign-in (access was revoked or has expired), so syncing has stopped. The scores below are from the last successful sync.', 'dragon-content-decay' ); ?>
+					<?php else : ?>
+						<?php esc_html_e( 'Google no longer accepts this site\'s saved sign-in (access was revoked or has expired), so syncing has stopped.', 'dragon-content-decay' ); ?>
+					<?php endif; ?>
 					<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>"><?php esc_html_e( 'Connect to Google again', 'dragon-content-decay' ); ?></a>
 				</p>
 			</div>
@@ -99,15 +106,29 @@ defined( 'ABSPATH' ) || exit;
 				?>
 			</span>
 			<?php if ( ! empty( $last_sync['error'] ) ) : ?>
-				<span class="dcd-sync-warning">
+				<div class="dcd-sync-warning">
 					<?php
-					printf(
-						/* translators: %s: why the analytics data could not be fetched */
-						esc_html__( 'Last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
-						esc_html( $last_sync['error'] )
-					);
+					if ( \DragonContentDecay\Scheduler::has_successful_sync() ) {
+						printf(
+							/* translators: %s: why the analytics data could not be fetched */
+							esc_html__( 'Last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
+							esc_html( $last_sync['error'] )
+						);
+					} else {
+						printf(
+							/* translators: %s: why the analytics data could not be fetched */
+							esc_html__( 'The sync failed, so there are no scores yet. %s', 'dragon-content-decay' ),
+							esc_html( $last_sync['error'] )
+						);
+					}
 					?>
-				</span>
+					<?php if ( ! empty( $last_sync['error_detail'] ) ) : ?>
+						<details class="dcd-error-detail">
+							<summary><?php esc_html_e( 'Technical details', 'dragon-content-decay' ); ?></summary>
+							<code><?php echo esc_html( $last_sync['error_detail'] ); ?></code>
+						</details>
+					<?php endif; ?>
+				</div>
 			<?php elseif ( ! empty( $last_sync['status'] ) && \DragonContentDecay\Scheduler::STATUS_COMPLETE !== $last_sync['status'] ) : ?>
 				<span class="dcd-sync-warning">
 					<?php
@@ -121,7 +142,7 @@ defined( 'ABSPATH' ) || exit;
 				</span>
 			<?php endif; ?>
 			<?php if ( empty( $last_sync['error'] ) && ! empty( $last_sync['search_error'] ) && get_option( 'dragoncontentdecay_gsc_enabled', 0 ) ) : ?>
-				<span class="dcd-sync-warning">
+				<div class="dcd-sync-warning">
 					<?php
 					printf(
 						/* translators: %s: why the Search Console data could not be fetched */
@@ -129,7 +150,13 @@ defined( 'ABSPATH' ) || exit;
 						esc_html( $last_sync['search_error'] )
 					);
 					?>
-				</span>
+					<?php if ( ! empty( $last_sync['search_error_detail'] ) ) : ?>
+						<details class="dcd-error-detail">
+							<summary><?php esc_html_e( 'Technical details', 'dragon-content-decay' ); ?></summary>
+							<code><?php echo esc_html( $last_sync['search_error_detail'] ); ?></code>
+						</details>
+					<?php endif; ?>
+				</div>
 			<?php endif; ?>
 			<button type="button" class="button dcd-sync-button" id="dcd-manual-sync">
 				<span class="dashicons dashicons-update"></span>

@@ -32,6 +32,14 @@ class API_GSC {
 	private $transport;
 
 	/**
+	 * The raw text behind the most recent failed page request (technical
+	 * detail for display), or ''.
+	 *
+	 * @var string
+	 */
+	private string $last_error_detail = '';
+
+	/**
 	 * Search Console API base.
 	 */
 	private const API_BASE = 'https://searchconsole.googleapis.com/webmasters/v3';
@@ -98,7 +106,7 @@ class API_GSC {
 	 * Fetch current-vs-previous per-page search metrics for the configured property.
 	 *
 	 * @param int $period_days Comparison period length in days.
-	 * @return array{current: array<string,array>, previous: array<string,array>, error: string, truncated: array{current: bool, previous: bool}}
+	 * @return array{current: array<string,array>, previous: array<string,array>, error: string, error_detail: string, truncated: array{current: bool, previous: bool}}
 	 *               Keyed by normalised URL path. 'error' is non-empty when
 	 *               either period could not be fetched, in which case neither
 	 *               period may be stored: a missing period would read as zero
@@ -107,10 +115,11 @@ class API_GSC {
 	 */
 	public function fetch_comparison_data( int $period_days ): array {
 		$result = array(
-			'current'   => array(),
-			'previous'  => array(),
-			'error'     => '',
-			'truncated' => array(
+			'current'      => array(),
+			'previous'     => array(),
+			'error'        => '',
+			'error_detail' => '',
+			'truncated'    => array(
 				'current'  => false,
 				'previous' => false,
 			),
@@ -140,13 +149,15 @@ class API_GSC {
 
 		$current = $this->query( $property, $current_start, $current_end, $token );
 		if ( is_string( $current ) ) {
-			$result['error'] = $current;
+			$result['error']        = $current;
+			$result['error_detail'] = $this->last_error_detail;
 			return $result;
 		}
 
 		$previous = $this->query( $property, $prev_start, $prev_end, $token );
 		if ( is_string( $previous ) ) {
-			$result['error'] = $previous;
+			$result['error']        = $previous;
+			$result['error_detail'] = $this->last_error_detail;
 			return $result;
 		}
 
@@ -265,32 +276,24 @@ class API_GSC {
 
 		$res  = call_user_func( $this->transport, 'POST', $url, $body, $token );
 		$code = (int) ( $res['code'] ?? 0 );
-		$data = json_decode( (string) ( $res['body'] ?? '' ), true );
+		$raw  = (string) ( $res['body'] ?? '' );
+		$data = json_decode( $raw, true );
+
+		$this->last_error_detail = '';
 
 		if ( 200 !== $code ) {
-			$reason = is_array( $data ) && isset( $data['error']['message'] ) && is_string( $data['error']['message'] )
-				? trim( $data['error']['message'] )
-				: '';
-
 			if ( 0 === $code ) {
-				return __( 'The Search Console request could not be sent (no response from Google).', 'dragon-content-decay' );
+				$this->last_error_detail = Error_Text::detail( (string) ( $res['error'] ?? '' ) );
+			} else {
+				$reason                  = Error_Text::detail( $raw );
+				$this->last_error_detail = 'HTTP ' . $code . ( '' !== $reason ? ': ' . $reason : '' );
 			}
 
-			return '' !== $reason
-				? sprintf(
-					/* translators: 1: HTTP status code, 2: error message returned by Google */
-					__( 'The Search Console request failed (HTTP %1$d): %2$s', 'dragon-content-decay' ),
-					$code,
-					mb_substr( $reason, 0, 300 )
-				)
-				: sprintf(
-					/* translators: %d: HTTP status code */
-					__( 'The Search Console request failed (HTTP %d).', 'dragon-content-decay' ),
-					$code
-				);
+			return Error_Text::message( Error_Text::classify( $raw, '', $code ), Error_Text::SERVICE_GSC );
 		}
 
 		if ( ! is_array( $data ) ) {
+			$this->last_error_detail = Error_Text::detail( $raw );
 			return __( 'Search Console sent a response that could not be read.', 'dragon-content-decay' );
 		}
 
@@ -447,7 +450,7 @@ class API_GSC {
 	 * @param string $url    URL (always a googleapis.com endpoint).
 	 * @param array  $body   Request body (POST).
 	 * @param string $token  Bearer token.
-	 * @return array{code:int, body:string}
+	 * @return array{code:int, body:string, error?:string} error: why no response arrived.
 	 */
 	private function http_request( string $method, string $url, array $body, string $token ): array {
 		$args = array(
@@ -468,8 +471,9 @@ class API_GSC {
 
 		if ( is_wp_error( $res ) ) {
 			return array(
-				'code' => 0,
-				'body' => '',
+				'code'  => 0,
+				'body'  => '',
+				'error' => $res->get_error_message(),
 			);
 		}
 

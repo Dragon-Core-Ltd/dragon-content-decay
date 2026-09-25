@@ -118,6 +118,23 @@
 .dcd-sync-warning {
     color: #b45309;
     font-size: 13px;
+    flex: 1 1 280px;
+}
+
+.dcd-error-detail {
+    margin-top: 6px;
+    color: #374151;
+}
+
+.dcd-error-detail summary {
+    cursor: pointer;
+}
+
+.dcd-error-detail code {
+    display: block;
+    margin-top: 4px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .dcd-sync-button {
