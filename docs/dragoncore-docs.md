@@ -4,8 +4,10 @@ Connects to Google Analytics 4 and finds the posts losing traffic - so you refre
 
 ## Getting started
 1. **Tools → Content Decay → Settings → Connect Google Analytics.** The plugin requests read-only Analytics access.
-2. Pick this site's GA4 property.
-3. The first scan compares recent traffic against your baseline per post and classifies each as **Decaying**, **Stable**, or **Growing**.
+2. Enter this site's **GA4 Property ID** (the number shown under **Admin → Property Settings** in Google Analytics) and save.
+3. The first scan compares each post's page views over the chosen period (full days, ending yesterday in your site's timezone) with the period of equal length before it, and classifies each post as **Decaying**, **Stable**, or **Growing**. Only the post types chosen under **Post Types to Track** are scored.
+
+A post's page views are the sum over every address Google Analytics reports for it, such as a different letter case or an old category path. Feed, embed, AMP, comment-page and paged addresses of a post are left out. On a site installed in a subfolder (for example `example.com/blog`), the subfolder is matched automatically.
 
 ## Reading the dashboard
 Decaying posts are your refresh queue: each row shows the traffic trend and links straight to the editor. Prioritise the ones with the steepest decline and the most historical traffic - those are recoverable rankings.
@@ -33,7 +35,7 @@ OAuth tokens are stored encrypted in your database; traffic data is fetched from
 
 ## Troubleshooting
 - **A message after returning from Google** - a cancelled or refused sign-in, a sign-in that did not complete (check the Client ID and Client Secret) or one that expired or did not start from this site each leave the site unconnected and say which; connect again.
-- **"Connect" fails after approving** - check the property picker: the Google account must have access to the GA4 property for this domain.
+- **"Connect" fails after approving** - check the **GA4 Property ID** in Settings: it must be this site's property, and the Google account must have access to it.
 - **"Google no longer accepts this site's saved sign-in"** - the refresh token was revoked or expired (for example, access was removed in your Google account). Syncing stops until you connect again from Settings. A temporary failure to refresh is retried after 15 minutes.
-- **Numbers look different from GA4's UI** - the plugin reads sessions per page path; GA4's UI often shows filtered/modelled views.
+- **Numbers look different from GA4's UI** - the plugin reads page views (`screenPageViews`) per page path over full days ending yesterday, adds up a post's addresses and leaves out its feed, embed, AMP, comment-page and paged addresses; GA4's UI often shows filtered or modelled views and includes today.
 - **Search Console shows no data** - confirm the Search Console API is enabled in your Google Cloud project and that you reconnected after ticking the option; Search Console data also lags real time by 2–3 days.

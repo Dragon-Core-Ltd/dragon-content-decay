@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T02:32:45+00:00\n"
+"POT-Creation-Date: 2026-09-25T07:28:05+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: dragon-content-decay\n"
@@ -18,7 +18,7 @@ msgstr ""
 #: dragon-content-decay.php
 #: admin/views/dashboard.php:14
 #: admin/views/settings.php:14
-#: includes/class-admin.php:64
+#: includes/class-admin.php:71
 msgid "Dragon Content Decay"
 msgstr ""
 
@@ -62,7 +62,7 @@ msgid "Connect your Google account - the plugin only requests read access to Ana
 msgstr ""
 
 #: admin/views/dashboard.php:31
-msgid "Pick the GA4 property for this site."
+msgid "Enter the GA4 Property ID for this site on the Settings tab."
 msgstr ""
 
 #: admin/views/dashboard.php:32
@@ -129,7 +129,7 @@ msgstr ""
 #. translators: %s: Decay score percentage
 #: admin/views/dashboard.php:156
 #: admin/views/dashboard.php:237
-#: includes/class-admin.php:451
+#: includes/class-admin.php:458
 #: includes/class-notifications.php:349
 msgid "%s%%"
 msgstr ""
@@ -159,19 +159,19 @@ msgid "All Trends"
 msgstr ""
 
 #: admin/views/dashboard.php:193
-#: includes/class-admin.php:200
+#: includes/class-admin.php:207
 #: includes/class-notifications.php:327
 msgid "Decaying"
 msgstr ""
 
 #: admin/views/dashboard.php:194
-#: includes/class-admin.php:201
+#: includes/class-admin.php:208
 #: includes/class-notifications.php:331
 msgid "Stable"
 msgstr ""
 
 #: admin/views/dashboard.php:195
-#: includes/class-admin.php:202
+#: includes/class-admin.php:209
 #: includes/class-notifications.php:335
 msgid "Growing"
 msgstr ""
@@ -472,47 +472,47 @@ msgstr ""
 msgid "In Google Analytics, go to Admin → Property Settings to find your Property ID (numeric)."
 msgstr ""
 
-#: includes/class-admin.php:65
+#: includes/class-admin.php:72
 msgid "Content Decay"
 msgstr ""
 
-#: includes/class-admin.php:99
+#: includes/class-admin.php:106
 msgid "Security check failed. Please try again."
 msgstr ""
 
-#: includes/class-admin.php:100
+#: includes/class-admin.php:107
 msgid "Error"
 msgstr ""
 
-#: includes/class-admin.php:118
+#: includes/class-admin.php:125
 msgid "You do not have permission to access this page."
 msgstr ""
 
-#: includes/class-admin.php:169
+#: includes/class-admin.php:176
 msgid "Syncing..."
 msgstr ""
 
-#: includes/class-admin.php:170
+#: includes/class-admin.php:177
 msgid "Sync complete!"
 msgstr ""
 
-#: includes/class-admin.php:171
+#: includes/class-admin.php:178
 msgid "An error occurred."
 msgstr ""
 
-#: includes/class-admin.php:330
+#: includes/class-admin.php:337
 msgid "Settings saved."
 msgstr ""
 
-#: includes/class-admin.php:335
+#: includes/class-admin.php:342
 msgid "The email digest could not be scheduled, so it will not be sent. Save the settings again; if this keeps happening, another plugin may be blocking scheduled tasks."
 msgstr ""
 
-#: includes/class-admin.php:415
+#: includes/class-admin.php:422
 msgid "Decay"
 msgstr ""
 
-#: includes/class-admin.php:511
+#: includes/class-admin.php:518
 msgid "View Analytics"
 msgstr ""
 
@@ -641,35 +641,39 @@ msgstr ""
 msgid "This is a test email from Dragon Content Decay on %s. If you received this, email notifications are working correctly."
 msgstr ""
 
-#: includes/class-scheduler.php:58
+#: includes/class-scheduler.php:74
 msgid "Permission denied."
 msgstr ""
 
-#: includes/class-scheduler.php:67
+#: includes/class-scheduler.php:83
 msgid "A sync is already running. Please try again in a moment."
 msgstr ""
 
 #. translators: %s: why the analytics data could not be fetched
-#: includes/class-scheduler.php:76
+#: includes/class-scheduler.php:92
 msgid "Sync failed, so no scores were changed. %s"
 msgstr ""
 
+#: includes/class-scheduler.php:103
+msgid "Part of the analytics data was matched to posts. Scores are updated once every page is matched; the sync carries on automatically in a few minutes."
+msgstr ""
+
 #. translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved
-#: includes/class-scheduler.php:89
+#: includes/class-scheduler.php:115
 msgid "Sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s. Check the database and try again."
 msgstr ""
 
 #. translators: %s: Number of posts analyzed
-#: includes/class-scheduler.php:104
+#: includes/class-scheduler.php:130
 msgid "Sync complete. Analyzed %s post."
 msgid_plural "Sync complete. Analyzed %s posts."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-scheduler.php:306
+#: includes/class-scheduler.php:350
 msgid "Never"
 msgstr ""
 
-#: includes/class-scheduler.php:324
+#: includes/class-scheduler.php:368
 msgid "Not scheduled"
 msgstr ""

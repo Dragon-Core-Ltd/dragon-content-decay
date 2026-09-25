@@ -22,15 +22,19 @@ final class AnalyzerTestSupport {
 	}
 
 	/**
-	 * @param array $comparison Canned ['current' => ..., 'previous' => ...] rows.
+	 * @param array             $comparison Canned ['current' => ..., 'previous' => ...] rows.
+	 * @param array<string,int> $resolve    Path key => post ID answers for path_to_post_id().
 	 */
-	public static function ga4( array $comparison = array() ): API_GA4 {
-		return new class( self::oauth(), $comparison ) extends API_GA4 {
+	public static function ga4( array $comparison = array(), array $resolve = array() ): API_GA4 {
+		return new class( self::oauth(), $comparison, $resolve ) extends API_GA4 {
 			private array $canned;
+			private array $resolve;
+			public array $resolved = array();
 
-			public function __construct( OAuth $oauth, array $canned ) {
+			public function __construct( OAuth $oauth, array $canned, array $resolve ) {
 				parent::__construct( $oauth );
-				$this->canned = $canned;
+				$this->canned  = $canned;
+				$this->resolve = $resolve;
 			}
 
 			public function fetch_comparison_data( int $period_days = 30 ): array {
@@ -42,13 +46,14 @@ final class AnalyzerTestSupport {
 			}
 
 			public function path_to_post_id( string $path ): ?int {
-				return null;
+				$this->resolved[] = $path;
+				return $this->resolve[ Analyzer::path_key( $path ) ] ?? null;
 			}
 		};
 	}
 
-	public static function analyzer( array $comparison = array() ): Analyzer {
-		return new Analyzer( self::ga4( $comparison ), new API_GSC( self::oauth() ) );
+	public static function analyzer( array $comparison = array(), array $resolve = array() ): Analyzer {
+		return new Analyzer( self::ga4( $comparison, $resolve ), new API_GSC( self::oauth() ) );
 	}
 
 	/**
@@ -59,7 +64,9 @@ final class AnalyzerTestSupport {
 		return new class( $replace_results, $slugs ) {
 			public string $prefix = 'wp_';
 			public string $posts  = 'wp_posts';
+			public string $options = 'wp_options';
 			public array $replaced = array();
+			public array $rows     = array();
 			public array $queries  = array();
 			/** @var int|false */
 			public $query_result = 1;
@@ -95,7 +102,8 @@ final class AnalyzerTestSupport {
 
 			public function replace( string $table, array $data, $format = null ) {
 				unset( $table, $format );
-				$this->replaced[] = $data['post_id'];
+				$this->replaced[]            = $data['post_id'];
+				$this->rows[ $data['post_id'] ] = $data;
 				return $this->results[ $data['post_id'] ] ?? 1;
 			}
 		};

@@ -39,6 +39,22 @@ class Scheduler {
 	private function init_hooks(): void {
 		add_action( self::CRON_HOOK, array( $this, 'run_daily_sync' ) );
 		add_action( 'wp_ajax_dragoncontentdecay_manual_sync', array( $this, 'handle_manual_sync' ) );
+		add_action( 'init', array( __CLASS__, 'ensure_scheduled' ) );
+	}
+
+	/**
+	 * Book the daily sync when it is missing. Activation books it only on the
+	 * site it ran on (the main site for a network activation) and a cleared
+	 * cron array loses it, so every site checks on init.
+	 *
+	 * @return bool Whether the daily sync is booked.
+	 */
+	public static function ensure_scheduled(): bool {
+		if ( wp_next_scheduled( self::CRON_HOOK ) ) {
+			return true;
+		}
+
+		return true === wp_schedule_event( time(), 'daily', self::CRON_HOOK );
 	}
 
 	/**
@@ -77,6 +93,16 @@ class Scheduler {
 						$result['error']
 					),
 					'status'  => $result['status'],
+				)
+			);
+		}
+
+		if ( ! empty( $result['pending'] ) ) {
+			wp_send_json_success(
+				array(
+					'message'  => __( 'Part of the analytics data was matched to posts. Scores are updated once every page is matched; the sync carries on automatically in a few minutes.', 'dragon-content-decay' ),
+					'analyzed' => 0,
+					'synced'   => 0,
 				)
 			);
 		}
@@ -175,6 +201,24 @@ class Scheduler {
 					'failed'   => 0,
 					'status'   => self::STATUS_FAILED,
 					'error'    => $error,
+				);
+			}
+
+			// Not every path could be matched to a post in the time available.
+			// Nothing was scored, so the last full result stands; carry on in a
+			// few minutes rather than waiting a day.
+			if ( ! empty( $outcome['pending'] ) ) {
+				wp_schedule_single_event( time() + 5 * MINUTE_IN_SECONDS, self::CRON_HOOK );
+				if ( empty( $outcome['cursor_saved'] ) ) {
+					update_option( 'dragoncontentdecay_last_sync_status', self::STATUS_PARTIAL );
+				}
+
+				return array(
+					'synced'   => 0,
+					'analyzed' => 0,
+					'failed'   => 0,
+					'status'   => ! empty( $outcome['cursor_saved'] ) ? self::STATUS_COMPLETE : self::STATUS_PARTIAL,
+					'pending'  => true,
 				);
 			}
 

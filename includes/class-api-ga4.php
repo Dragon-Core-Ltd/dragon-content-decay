@@ -351,20 +351,11 @@ class API_GA4 {
 	 *               not mean zero views.
 	 */
 	public function fetch_comparison_data( int $period_days = 30 ): array {
-		$today       = new \DateTime();
-		$current_end = $today->format( 'Y-m-d' );
-
-		$current_start_date = clone $today;
-		$current_start_date->modify( "-{$period_days} days" );
-		$current_start = $current_start_date->format( 'Y-m-d' );
-
-		$previous_end_date = clone $current_start_date;
-		$previous_end_date->modify( '-1 day' );
-		$previous_end = $previous_end_date->format( 'Y-m-d' );
-
-		$previous_start_date = clone $previous_end_date;
-		$previous_start_date->modify( "-{$period_days} days" );
-		$previous_start = $previous_start_date->format( 'Y-m-d' );
+		$ranges         = self::comparison_ranges( $period_days, new \DateTimeImmutable( 'now' ) );
+		$current_start  = $ranges['current_start'];
+		$current_end    = $ranges['current_end'];
+		$previous_start = $ranges['previous_start'];
+		$previous_end   = $ranges['previous_end'];
 
 		$current           = $this->fetch_pageviews( $current_start, $current_end );
 		$current_error     = $this->last_error;
@@ -384,27 +375,90 @@ class API_GA4 {
 	}
 
 	/**
-	 * Map URL path to post ID
+	 * The two equal-length comparison windows, in the site's timezone. The
+	 * current window ends yesterday: today is a partial day and GA4 is still
+	 * processing it, so including it would read as a drop against the
+	 * previous window's full days.
 	 *
-	 * @param string $path URL path (e.g., /my-blog-post/)
+	 * @param int                $period_days Days in each window (at least 1).
+	 * @param \DateTimeImmutable $now         The current moment.
+	 * @return array{current_start:string,current_end:string,previous_start:string,previous_end:string} Y-m-d dates, inclusive.
+	 */
+	public static function comparison_ranges( int $period_days, \DateTimeImmutable $now ): array {
+		$span = max( 1, $period_days ) - 1;
+
+		$current_end    = $now->setTimezone( wp_timezone() )->setTime( 0, 0 )->modify( '-1 day' );
+		$current_start  = $current_end->modify( "-{$span} days" );
+		$previous_end   = $current_start->modify( '-1 day' );
+		$previous_start = $previous_end->modify( "-{$span} days" );
+
+		return array(
+			'current_start'  => $current_start->format( 'Y-m-d' ),
+			'current_end'    => $current_end->format( 'Y-m-d' ),
+			'previous_start' => $previous_start->format( 'Y-m-d' ),
+			'previous_end'   => $previous_end->format( 'Y-m-d' ),
+		);
+	}
+
+	/**
+	 * Reduce a GA4 page path (which includes the install's subfolder, e.g.
+	 * /blog/my-post on a site at example.com/blog) to the path below the
+	 * WordPress home URL. The subfolder is removed once, on a segment
+	 * boundary, so a page at /blog/blog/x keeps its own /blog.
+	 *
+	 * @param string $path GA4 page path.
+	 * @return string|null Path with a leading slash ('/' for home), or null
+	 *                     when the path is outside the install.
+	 */
+	public static function strip_home_path( string $path ): ?string {
+		$home = trim( (string) wp_parse_url( home_url(), PHP_URL_PATH ), '/' );
+		$path = '/' . ltrim( $path, '/' );
+
+		if ( '' === $home ) {
+			return $path;
+		}
+
+		$prefix = '/' . $home;
+		if ( rtrim( $path, '/' ) === $prefix ) {
+			return '/';
+		}
+
+		if ( ! str_starts_with( $path, $prefix . '/' ) ) {
+			return null;
+		}
+
+		return substr( $path, strlen( $prefix ) );
+	}
+
+	/**
+	 * Map a GA4 page path to a post of one of the tracked post types.
+	 *
+	 * @param string $path GA4 page path, including any install subfolder.
 	 * @return int|null Post ID or null if not found
 	 */
 	public function path_to_post_id( string $path ): ?int {
-		// Remove leading/trailing slashes
-		$path = trim( $path, '/' );
-
-		// Try to find post by slug
-		$post = get_page_by_path( $path, OBJECT, get_option( 'dragoncontentdecay_post_types', array( 'post' ) ) );
-
-		if ( $post ) {
-			return $post->ID;
+		$relative = self::strip_home_path( $path );
+		if ( null === $relative ) {
+			return null;
 		}
 
-		// Try url_to_postid as fallback
-		$url     = home_url( $path );
-		$post_id = url_to_postid( $url );
+		$relative = trim( $relative, '/' );
+		$types    = Analyzer::tracked_post_types();
 
-		return $post_id > 0 ? $post_id : null;
+		if ( '' !== $relative ) {
+			$post = get_page_by_path( $relative, OBJECT, $types );
+			if ( $post ) {
+				return (int) $post->ID;
+			}
+		}
+
+		// url_to_postid() answers for any post type, so keep only tracked ones.
+		$post_id = url_to_postid( home_url( $relative ) );
+		if ( $post_id <= 0 || ! in_array( get_post_type( $post_id ), $types, true ) ) {
+			return null;
+		}
+
+		return $post_id;
 	}
 
 	/**

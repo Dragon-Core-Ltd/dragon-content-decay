@@ -43,9 +43,11 @@ class Analyzer {
 	/**
 	 * Calculate decay scores for all posts
 	 *
-	 * @return array{analyzed:int,failed:int,cursor_saved:bool,error?:string,search_error?:string}
+	 * @return array{analyzed:int,failed:int,cursor_saved:bool,pending?:bool,error?:string,search_error?:string}
 	 *               Posts scored, posts whose score row could not be written,
-	 *               whether the rotating cursor was persisted for the next run,
+	 *               whether the partly resolved paths were persisted for the
+	 *               next run, whether the run ran out of time before every
+	 *               path was matched to a post (nothing is scored then),
 	 *               why the run was aborted when the GA4 data could not be
 	 *               fetched, and why the Search Console data could not be
 	 *               fetched (the stored search columns are then kept).
@@ -86,8 +88,7 @@ class Analyzer {
 			return $result;
 		}
 
-		// All paths from both periods, reindexed 0..n-1 so the rotating cursor
-		// below can address them positionally.
+		// All paths from both periods.
 		$all_paths = array_values(
 			array_unique(
 				array_merge(
@@ -97,8 +98,7 @@ class Analyzer {
 			)
 		);
 
-		$total = count( $all_paths );
-		if ( 0 === $total ) {
+		if ( empty( $all_paths ) ) {
 			return $result;
 		}
 
@@ -107,6 +107,19 @@ class Analyzer {
 		// time the sync out. Ambiguous or unmatched slugs fall back to the precise
 		// resolver.
 		$slug_map = $this->build_slug_map( $all_paths );
+
+		// Every path must be resolved before any post is scored, because a post's
+		// views are the sum over all of its paths. The wall-clock budget keeps a
+		// large property (thousands of multi-segment paths, each needing a precise
+		// rewrite lookup) from exhausting max_execution_time; when it runs out the
+		// resolutions so far are saved and the next run carries on from them.
+		$resolved = $this->resolve_all( $all_paths, $slug_map );
+		if ( null === $resolved['map'] ) {
+			$result['pending']      = true;
+			$result['cursor_saved'] = $resolved['saved'];
+			return $result;
+		}
+		$ids = $resolved['map'];
 
 		// Optional Google Search Console signal, keyed by the same normalised
 		// paths. A failed fetch is not zero clicks: the stored search columns
@@ -120,68 +133,160 @@ class Analyzer {
 			'previous' => ! empty( $gsc['truncated']['previous'] ),
 		);
 
-		// Bound the run to a wall-clock budget so a large property (thousands of
-		// multi-segment paths, each needing a precise rewrite lookup) cannot exhaust
-		// PHP's max_execution_time and fatal mid-sync. A rotating cursor guarantees
-		// every path is eventually scored across successive runs rather than the
-		// same prefix each time.
-		$deadline = microtime( true ) + $this->time_budget();
-		$cursor   = (int) get_option( 'dragoncontentdecay_analyze_cursor', 0 );
-		if ( $cursor < 0 || $cursor >= $total ) {
-			$cursor = 0;
-		}
-
-		$processed = 0;
-		$index     = $cursor;
-
-		while ( $processed < $total ) {
-			if ( microtime( true ) > $deadline ) {
-				break;
+		$posts = array();
+		foreach ( $all_paths as $path ) {
+			$post_id = $this->counted_post_id( $path, $ids );
+			if ( 0 === $post_id ) {
+				continue;
 			}
 
-			$path = $all_paths[ $index % $total ];
-			++$index;
-			++$processed;
+			if ( ! isset( $posts[ $post_id ] ) ) {
+				$posts[ $post_id ] = array(
+					'current'      => 0,
+					'previous'     => 0,
+					'uncertain'    => false,
+					'keep_search'  => $keep_search,
+					'search_paths' => array(),
+				);
+			}
 
 			// A period whose report was too large to read in full holds only
 			// its busiest paths, so a path missing from it may still have had
-			// views: scoring it would report a false +/-100%.
+			// views: the post's total is unknown and it is not scored.
 			if ( ( $truncated['current'] && ! isset( $data['current'][ $path ] ) )
 				|| ( $truncated['previous'] && ! isset( $data['previous'][ $path ] ) ) ) {
-				continue;
+				$posts[ $post_id ]['uncertain'] = true;
 			}
 
-			$post_id = $this->resolve_path( $path, $slug_map );
-			if ( ! $post_id ) {
-				continue;
-			}
-
-			$current_views  = $data['current'][ $path ]['pageviews'] ?? 0;
-			$previous_views = $data['previous'][ $path ]['pageviews'] ?? 0;
+			$posts[ $post_id ]['current']  += (int) ( $data['current'][ $path ]['pageviews'] ?? 0 );
+			$posts[ $post_id ]['previous'] += (int) ( $data['previous'][ $path ]['pageviews'] ?? 0 );
 
 			// Likewise for Search Console: a path missing from a period that was
-			// only partly read may still have had clicks there, so its stored
-			// search values are kept rather than replaced with a false zero.
-			$keep_path_search = $keep_search
-				|| ( $search_truncated['current'] && ! isset( $gsc['current'][ $path ] ) )
-				|| ( $search_truncated['previous'] && ! isset( $gsc['previous'][ $path ] ) );
+			// only partly read may still have had clicks there, so the post's
+			// stored search values are kept rather than replaced with a false sum.
+			if ( ( $search_truncated['current'] && ! isset( $gsc['current'][ $path ] ) )
+				|| ( $search_truncated['previous'] && ! isset( $gsc['previous'][ $path ] ) ) ) {
+				$posts[ $post_id ]['keep_search'] = true;
+			}
+			$posts[ $post_id ]['search_paths'][] = $path;
+		}
 
-			$search = $keep_path_search ? null : $this->build_search_metrics( $path, $gsc );
+		ksort( $posts );
 
-			if ( $this->calculate_and_store_score( $post_id, $current_views, $previous_views, $search, $keep_path_search ) ) {
+		foreach ( $posts as $post_id => $post ) {
+			if ( $post['uncertain'] ) {
+				continue;
+			}
+
+			$search = $post['keep_search'] ? null : $this->build_search_metrics( $post['search_paths'], $gsc );
+
+			if ( $this->calculate_and_store_score( $post_id, $post['current'], $post['previous'], $search, $post['keep_search'] ) ) {
 				++$result['analyzed'];
 			} else {
 				++$result['failed'];
 			}
 		}
 
-		// update_option() also returns false for an unchanged value, so confirm
-		// the cursor by reading it back rather than trusting the return value.
-		$next_cursor = $index % $total;
-		update_option( 'dragoncontentdecay_analyze_cursor', $next_cursor, false );
-		$result['cursor_saved'] = (int) get_option( 'dragoncontentdecay_analyze_cursor', -1 ) === $next_cursor;
+		// The resolutions are only carried over while a pass is unfinished;
+		// starting afresh picks up renamed and newly published posts.
+		delete_option( self::RESOLVED_OPTION );
+		delete_option( 'dragoncontentdecay_analyze_cursor' );
 
 		return $result;
+	}
+
+	/**
+	 * Option holding the path => post ID resolutions of an unfinished pass.
+	 */
+	private const RESOLVED_OPTION = 'dragoncontentdecay_resolved_paths';
+
+	/**
+	 * Resolve every path (and the base path of each variant-shaped path that
+	 * resolved) to a post ID, 0 for none, within the time budget. At least one path is
+	 * resolved per call so successive runs always progress.
+	 *
+	 * @param array<int,string>            $paths    Normalised GA4 paths.
+	 * @param array<string,array<int,int>> $slug_map Leaf-slug map.
+	 * @return array{map:?array<string,int>,saved:bool} The full map, or null
+	 *               when the budget ran out (then 'saved' says whether the
+	 *               partial map was persisted for the next run).
+	 */
+	private function resolve_all( array $paths, array $slug_map ): array {
+		$map = get_option( self::RESOLVED_OPTION, array() );
+		$map = is_array( $map ) ? $map : array();
+
+		$deadline = microtime( true ) + $this->time_budget();
+		$progress = false;
+
+		foreach ( $paths as $path ) {
+			$base = self::variant_base( $path );
+
+			foreach ( array( $path, $base ) as $key ) {
+				// The base only matters for a path that resolved to a post.
+				if ( null === $key || array_key_exists( $key, $map ) ) {
+					continue;
+				}
+				if ( $key === $base && (int) ( $map[ $path ] ?? 0 ) <= 0 ) {
+					continue;
+				}
+
+				if ( $progress && microtime( true ) > $deadline ) {
+					update_option( self::RESOLVED_OPTION, $map, false );
+					return array(
+						'map'   => null,
+						'saved' => get_option( self::RESOLVED_OPTION, null ) === $map,
+					);
+				}
+
+				$map[ $key ] = (int) $this->resolve_path( $key, $slug_map );
+				$progress    = true;
+			}
+		}
+
+		return array(
+			'map'   => $map,
+			'saved' => true,
+		);
+	}
+
+	/**
+	 * The post a path's views count towards, or 0. A feed, embed, AMP,
+	 * comment-page or paged variant of a post (its path minus that suffix
+	 * resolves to the same post) is not counted: those are not reads of the
+	 * post. A path whose suffix is part of the real permalink, such as
+	 * /archives/123 or a child page named "amp", is counted.
+	 *
+	 * @param string            $path Normalised GA4 path.
+	 * @param array<string,int> $ids  Path => resolved post ID.
+	 * @return int
+	 */
+	private function counted_post_id( string $path, array $ids ): int {
+		$post_id = (int) ( $ids[ $path ] ?? 0 );
+		if ( $post_id <= 0 ) {
+			return 0;
+		}
+
+		$base = self::variant_base( $path );
+		if ( null !== $base && (int) ( $ids[ $base ] ?? 0 ) === $post_id ) {
+			return 0;
+		}
+
+		return $post_id;
+	}
+
+	/**
+	 * The path without a trailing feed, embed, AMP, comment-page or
+	 * pagination suffix, or null when it has none.
+	 *
+	 * @param string $path Normalised path (see path_key()).
+	 * @return string|null
+	 */
+	public static function variant_base( string $path ): ?string {
+		if ( preg_match( '#^(/.+?)/(?:feed(?:/(?:feed|rdf|rss|rss2|atom))?|embed|amp|comment-page-[0-9]+|page/[0-9]+|[0-9]+)$#', $path, $m ) ) {
+			return $m[1];
+		}
+
+		return null;
 	}
 
 	/**
@@ -274,6 +379,17 @@ class Analyzer {
 	}
 
 	/**
+	 * The post types chosen under Post Types to Track ('post' when none are).
+	 *
+	 * @return array<int,string>
+	 */
+	public static function tracked_post_types(): array {
+		$types = array_values( array_filter( array_map( 'strval', (array) get_option( 'dragoncontentdecay_post_types', array( 'post' ) ) ) ) );
+
+		return empty( $types ) ? array( 'post' ) : $types;
+	}
+
+	/**
 	 * Build a leaf-slug => [post IDs] map for the given paths in one query set.
 	 *
 	 * @param array<int,string> $paths GA4 paths.
@@ -284,7 +400,7 @@ class Analyzer {
 
 		$slugs = array();
 		foreach ( $paths as $path ) {
-			$trimmed = trim( (string) $path, '/' );
+			$trimmed = trim( (string) API_GA4::strip_home_path( (string) $path ), '/' );
 			if ( '' === $trimmed ) {
 				continue;
 			}
@@ -296,10 +412,7 @@ class Analyzer {
 			return array();
 		}
 
-		$types = (array) get_option( 'dragoncontentdecay_post_types', array( 'post' ) );
-		if ( empty( $types ) ) {
-			$types = array( 'post' );
-		}
+		$types = self::tracked_post_types();
 
 		$map     = array();
 		$type_ph = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
@@ -338,7 +451,11 @@ class Analyzer {
 	 * @return int|null
 	 */
 	private function resolve_path( string $path, array $slug_map ): ?int {
-		$trimmed = trim( $path, '/' );
+		$relative = API_GA4::strip_home_path( $path );
+		if ( null === $relative ) {
+			return null;
+		}
+		$trimmed = trim( $relative, '/' );
 
 		// Fast path only for a single-segment path (/slug/): there the slug is the
 		// whole path, so a unique match is identical to what the precise resolver
@@ -351,6 +468,7 @@ class Analyzer {
 			}
 		}
 
+		// The full GA4 path: path_to_post_id() removes the install subfolder itself.
 		return $this->api_ga4->path_to_post_id( $path );
 	}
 
@@ -447,29 +565,60 @@ class Analyzer {
 	}
 
 	/**
-	 * Build the per-post Search Console metric set for a path, or null if there is
-	 * no GSC data for it.
+	 * Build the per-post Search Console metric set summed over the post's
+	 * paths, or null if there is no GSC data for any of them. Position is the
+	 * impression-weighted mean of the current period (a plain mean when no
+	 * impressions were recorded).
 	 *
-	 * @param string $path Normalised path key (see path_key()).
-	 * @param array  $gsc  GSC comparison data keyed the same way.
+	 * @param array<int,string> $paths Normalised path keys (see path_key()).
+	 * @param array             $gsc   GSC comparison data keyed the same way.
 	 * @return array|null
 	 */
-	private function build_search_metrics( string $path, array $gsc ): ?array {
-		$path = self::path_key( $path );
-		$cur  = $gsc['current'][ $path ] ?? null;
-		$prev = $gsc['previous'][ $path ] ?? null;
+	private function build_search_metrics( array $paths, array $gsc ): ?array {
+		$out      = array(
+			'clicks_current'       => 0,
+			'clicks_previous'      => 0,
+			'impressions_current'  => 0,
+			'impressions_previous' => 0,
+			'position'             => 0.0,
+		);
+		$found    = false;
+		$weighted = 0.0;
+		$sum      = 0.0;
+		$rows     = 0;
 
-		if ( null === $cur && null === $prev ) {
+		foreach ( array_unique( array_map( array( self::class, 'path_key' ), $paths ) ) as $path ) {
+			$cur  = $gsc['current'][ $path ] ?? null;
+			$prev = $gsc['previous'][ $path ] ?? null;
+
+			if ( null === $cur && null === $prev ) {
+				continue;
+			}
+			$found = true;
+
+			$out['clicks_current']       += (int) ( $cur['clicks'] ?? 0 );
+			$out['clicks_previous']      += (int) ( $prev['clicks'] ?? 0 );
+			$out['impressions_current']  += (int) ( $cur['impressions'] ?? 0 );
+			$out['impressions_previous'] += (int) ( $prev['impressions'] ?? 0 );
+
+			if ( null !== $cur ) {
+				$weighted += (float) ( $cur['position'] ?? 0 ) * (int) ( $cur['impressions'] ?? 0 );
+				$sum      += (float) ( $cur['position'] ?? 0 );
+				++$rows;
+			}
+		}
+
+		if ( ! $found ) {
 			return null;
 		}
 
-		return array(
-			'clicks_current'       => (int) ( $cur['clicks'] ?? 0 ),
-			'clicks_previous'      => (int) ( $prev['clicks'] ?? 0 ),
-			'impressions_current'  => (int) ( $cur['impressions'] ?? 0 ),
-			'impressions_previous' => (int) ( $prev['impressions'] ?? 0 ),
-			'position'             => (float) ( $cur['position'] ?? 0 ),
-		);
+		if ( $out['impressions_current'] > 0 ) {
+			$out['position'] = $weighted / $out['impressions_current'];
+		} elseif ( $rows > 0 ) {
+			$out['position'] = $sum / $rows;
+		}
+
+		return $out;
 	}
 
 	/**

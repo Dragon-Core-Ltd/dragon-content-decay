@@ -11,8 +11,7 @@ use PHPUnit\Framework\TestCase;
 final class AnalyzerStoreTest extends TestCase {
 
 	protected function setUp(): void {
-		$GLOBALS['dragoncontentdecay_test_options']          = array();
-		$GLOBALS['dragoncontentdecay_test_options_readonly'] = false;
+		dragoncontentdecay_test_reset();
 	}
 
 	protected function tearDown(): void {
@@ -56,24 +55,32 @@ final class AnalyzerStoreTest extends TestCase {
 		$this->assertTrue( $result['cursor_saved'] );
 	}
 
-	public function test_analyze_all_reports_a_cursor_that_did_not_persist(): void {
+	private static function out_of_time(): void {
+		add_filter(
+			'dragoncontentdecay_analyze_time_budget',
+			static function () {
+				return 0.0;
+			}
+		);
+	}
+
+	public function test_analyze_all_reports_resolutions_that_did_not_persist(): void {
+		self::out_of_time();
 		$GLOBALS['dragoncontentdecay_test_options_readonly'] = true;
+
+		$result = $this->two_post_run( array() );
+
+		$this->assertTrue( $result['pending'] );
+		$this->assertSame( 0, $result['analyzed'] );
+		$this->assertFalse( $result['cursor_saved'] );
+	}
+
+	public function test_a_finished_pass_forgets_its_resolutions(): void {
+		update_option( 'dragoncontentdecay_resolved_paths', array( '/alpha' => 1 ) );
 
 		$result = $this->two_post_run( array() );
 
 		$this->assertSame( 2, $result['analyzed'] );
-		$this->assertSame( 0, $result['failed'] );
-		$this->assertFalse( $result['cursor_saved'] );
-	}
-
-	public function test_analyze_all_accepts_an_unchanged_cursor_as_saved(): void {
-		// A full run over 2 paths from cursor 0 lands back on 0: update_option
-		// returns false for an unchanged value, but the stored cursor is right.
-		update_option( 'dragoncontentdecay_analyze_cursor', 0 );
-		$GLOBALS['dragoncontentdecay_test_options_readonly'] = true;
-
-		$result = $this->two_post_run( array() );
-
-		$this->assertTrue( $result['cursor_saved'] );
+		$this->assertFalse( get_option( 'dragoncontentdecay_resolved_paths' ) );
 	}
 }

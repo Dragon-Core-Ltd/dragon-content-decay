@@ -58,9 +58,17 @@ if ( ! function_exists( 'wp_json_encode' ) ) {
 	}
 }
 
+// Install path under the host ('' for a root install, '/blog' for a subfolder).
+$GLOBALS['dragoncontentdecay_test_home_path'] = '';
+
 if ( ! function_exists( 'home_url' ) ) {
+	// Core's get_home_url(): the home option, then '/' . ltrim( $path, '/' ).
 	function home_url( $path = '' ) {
-		return 'https://www.example.test' . $path;
+		$url = 'https://www.example.test' . $GLOBALS['dragoncontentdecay_test_home_path'];
+		if ( $path && is_string( $path ) ) {
+			$url .= '/' . ltrim( $path, '/' );
+		}
+		return $url;
 	}
 }
 
@@ -72,6 +80,20 @@ if ( ! function_exists( 'add_filter' ) ) {
 		unset( $priority, $accepted_args );
 		$GLOBALS['dragoncontentdecay_test_filters'][ $tag ][] = $callback;
 		return true;
+	}
+}
+
+if ( ! function_exists( 'remove_filter' ) ) {
+	// Core returns whether the callback had been hooked.
+	function remove_filter( $tag, $callback, $priority = 10 ) {
+		unset( $priority );
+		foreach ( $GLOBALS['dragoncontentdecay_test_filters'][ $tag ] ?? array() as $i => $hooked ) {
+			if ( $hooked === $callback ) {
+				unset( $GLOBALS['dragoncontentdecay_test_filters'][ $tag ][ $i ] );
+				return true;
+			}
+		}
+		return false;
 	}
 }
 
@@ -171,17 +193,103 @@ if ( ! function_exists( 'current_time' ) ) {
 	}
 }
 
+// Posts known to the stubs: ID => array( 'path' => 'parent/slug', 'type' => 'post' ).
+$GLOBALS['dragoncontentdecay_test_posts'] = array();
+// Full URL => post ID answers for url_to_postid().
+$GLOBALS['dragoncontentdecay_test_url_ids'] = array();
+
 if ( ! function_exists( 'get_page_by_path' ) ) {
+	// Matches the full hierarchical path within the given post type(s).
 	function get_page_by_path( $page_path, $output = OBJECT, $post_type = 'page' ) {
-		unset( $page_path, $output, $post_type );
+		unset( $output );
+		$types = (array) $post_type;
+		foreach ( $GLOBALS['dragoncontentdecay_test_posts'] as $id => $post ) {
+			if ( trim( (string) $page_path, '/' ) === $post['path'] && in_array( $post['type'], $types, true ) ) {
+				return (object) array(
+					'ID'        => $id,
+					'post_type' => $post['type'],
+				);
+			}
+		}
 		return null;
 	}
 }
 
 if ( ! function_exists( 'url_to_postid' ) ) {
+	// Any post type: core resolves pages, products and feed/embed/paged
+	// variants of a post alike.
 	function url_to_postid( $url ) {
-		unset( $url );
-		return 0;
+		return (int) ( $GLOBALS['dragoncontentdecay_test_url_ids'][ $url ] ?? 0 );
+	}
+}
+
+if ( ! function_exists( 'get_post_type' ) ) {
+	function get_post_type( $post = null ) {
+		$id = is_object( $post ) ? (int) $post->ID : (int) $post;
+		return isset( $GLOBALS['dragoncontentdecay_test_posts'][ $id ] ) ? $GLOBALS['dragoncontentdecay_test_posts'][ $id ]['type'] : false;
+	}
+}
+
+// Multisite: blog IDs of the network (empty for a single site) and the
+// switch_to_blog() stack.
+$GLOBALS['dragoncontentdecay_test_sites']      = array();
+$GLOBALS['dragoncontentdecay_test_blog_stack'] = array();
+$GLOBALS['dragoncontentdecay_test_blog_id']    = 1;
+
+if ( ! function_exists( 'is_multisite' ) ) {
+	function is_multisite() {
+		return ! empty( $GLOBALS['dragoncontentdecay_test_sites'] );
+	}
+}
+
+if ( ! function_exists( 'get_sites' ) ) {
+	function get_sites( $args = array() ) {
+		$ids = $GLOBALS['dragoncontentdecay_test_sites'];
+		if ( isset( $args['number'] ) && (int) $args['number'] > 0 ) {
+			$ids = array_slice( $ids, 0, (int) $args['number'] );
+		}
+		if ( isset( $args['fields'] ) && 'ids' === $args['fields'] ) {
+			return $ids;
+		}
+		return array_map(
+			static function ( $id ) {
+				return (object) array( 'blog_id' => (string) $id );
+			},
+			$ids
+		);
+	}
+}
+
+if ( ! function_exists( 'dragoncontentdecay_test_apply_blog' ) ) {
+	// Point $wpdb's per-site table names at the current blog, as core's
+	// $wpdb->set_blog_id() does.
+	function dragoncontentdecay_test_apply_blog() {
+		$id = $GLOBALS['dragoncontentdecay_test_blog_id'];
+		if ( isset( $GLOBALS['wpdb'] ) && is_object( $GLOBALS['wpdb'] ) ) {
+			$GLOBALS['wpdb']->prefix  = 1 === $id ? 'wp_' : 'wp_' . $id . '_';
+			$GLOBALS['wpdb']->options = $GLOBALS['wpdb']->prefix . 'options';
+		}
+	}
+}
+
+if ( ! function_exists( 'switch_to_blog' ) ) {
+	function switch_to_blog( $new_blog_id, $deprecated = null ) {
+		unset( $deprecated );
+		$GLOBALS['dragoncontentdecay_test_blog_stack'][] = $GLOBALS['dragoncontentdecay_test_blog_id'];
+		$GLOBALS['dragoncontentdecay_test_blog_id']      = (int) $new_blog_id;
+		dragoncontentdecay_test_apply_blog();
+		return true;
+	}
+}
+
+if ( ! function_exists( 'restore_current_blog' ) ) {
+	function restore_current_blog() {
+		if ( empty( $GLOBALS['dragoncontentdecay_test_blog_stack'] ) ) {
+			return false;
+		}
+		$GLOBALS['dragoncontentdecay_test_blog_id'] = array_pop( $GLOBALS['dragoncontentdecay_test_blog_stack'] );
+		dragoncontentdecay_test_apply_blog();
+		return true;
 	}
 }
 
@@ -464,6 +572,27 @@ if ( ! function_exists( 'wp_schedule_event' ) ) {
 	}
 }
 
+if ( ! function_exists( 'wp_schedule_single_event' ) ) {
+	// Core refuses a duplicate of the same hook and args within ten minutes.
+	function wp_schedule_single_event( $timestamp, $hook, $args = array(), $wp_error = false ) {
+		if ( ! is_numeric( $timestamp ) || $timestamp <= 0 ) {
+			return $wp_error ? new WP_Error( 'invalid_timestamp', 'Event timestamp must be a valid Unix timestamp.' ) : false;
+		}
+		$key = md5( serialize( $args ) );
+		foreach ( $GLOBALS['dragoncontentdecay_test_cron'] as $at => $hooks ) {
+			if ( isset( $hooks[ $hook ][ $key ] ) && abs( $at - $timestamp ) <= 10 * MINUTE_IN_SECONDS ) {
+				return $wp_error ? new WP_Error( 'duplicate_event', 'A duplicate event already exists.' ) : false;
+			}
+		}
+		$GLOBALS['dragoncontentdecay_test_cron'][ (int) $timestamp ][ $hook ][ $key ] = array(
+			'schedule' => false,
+			'args'     => $args,
+		);
+		ksort( $GLOBALS['dragoncontentdecay_test_cron'] );
+		return true;
+	}
+}
+
 if ( ! function_exists( 'wp_next_scheduled' ) ) {
 	function wp_next_scheduled( $hook, $args = array() ) {
 		$key = md5( serialize( $args ) );
@@ -527,6 +656,12 @@ function dragoncontentdecay_test_reset(): void {
 	$GLOBALS['dragoncontentdecay_test_mail']             = array();
 	$GLOBALS['dragoncontentdecay_test_can_edit']         = false;
 	$GLOBALS['dragoncontentdecay_test_blogname']         = 'Rich&#039;s Shop &amp; Co';
+	$GLOBALS['dragoncontentdecay_test_home_path']        = '';
+	$GLOBALS['dragoncontentdecay_test_posts']            = array();
+	$GLOBALS['dragoncontentdecay_test_url_ids']          = array();
+	$GLOBALS['dragoncontentdecay_test_sites']            = array();
+	$GLOBALS['dragoncontentdecay_test_blog_stack']       = array();
+	$GLOBALS['dragoncontentdecay_test_blog_id']          = 1;
 }
 
 

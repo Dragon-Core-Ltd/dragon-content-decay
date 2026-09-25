@@ -114,7 +114,7 @@ This plugin works with Google Analytics 4 (GA4) only. Universal Analytics is not
 
 = How is decay calculated? =
 
-Decay score is the percentage change in pageviews between the current period and the previous period of equal length. For example, with a 30-day comparison period, we compare the last 30 days to the 30 days before that.
+Decay score is the percentage change in pageviews between the current period and the previous period of equal length. For example, with a 30-day comparison period, we compare the 30 full days ending yesterday (in your site's timezone) to the 30 days before that. A post's page views are added up across every address Google Analytics reports for it, leaving out its feed, embed, AMP, comment-page and paged addresses.
 
 = What's a good decay threshold? =
 

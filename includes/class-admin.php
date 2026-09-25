@@ -50,7 +50,14 @@ class Admin {
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_filter( 'manage_posts_columns', array( $this, 'add_decay_column' ) );
 		add_action( 'manage_posts_custom_column', array( $this, 'render_decay_column' ), 10, 2 );
-		add_filter( 'manage_edit-post_sortable_columns', array( $this, 'make_decay_column_sortable' ) );
+		$tracked = Analyzer::tracked_post_types();
+		if ( in_array( 'page', $tracked, true ) ) {
+			add_filter( 'manage_pages_columns', array( $this, 'add_decay_column' ) );
+			add_action( 'manage_pages_custom_column', array( $this, 'render_decay_column' ), 10, 2 );
+		}
+		foreach ( array_unique( array_merge( array( 'post' ), $tracked ) ) as $type ) {
+			add_filter( "manage_edit-{$type}_sortable_columns", array( $this, 'make_decay_column_sortable' ) );
+		}
 		add_action( 'pre_get_posts', array( $this, 'sort_by_decay_score' ) );
 		add_filter( 'post_row_actions', array( $this, 'add_analytics_link' ), 10, 2 );
 	}
@@ -489,8 +496,8 @@ class Admin {
 		// LEFT JOIN to include posts without scores (they'll sort to end)
 		$clauses['join'] .= " LEFT JOIN {$table_scores} AS dcd_scores ON {$wpdb->posts}.ID = dcd_scores.post_id";
 
-		// Sort by decay score, NULLs last
-		$clauses['orderby'] = "COALESCE(dcd_scores.decay_score, 999999) {$order}";
+		// Sort by decay score, unscored posts last in either direction.
+		$clauses['orderby'] = "dcd_scores.decay_score IS NULL, dcd_scores.decay_score {$order}";
 
 		// Remove filter after use to prevent affecting other queries
 		remove_filter( 'posts_clauses', array( $this, 'modify_query_for_decay_sort' ) );

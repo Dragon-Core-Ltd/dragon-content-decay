@@ -14,18 +14,18 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-// Respect the site owner's data: nothing is removed unless they explicitly
-// opted in (the "Delete all data on uninstall" setting). Without the opt-in,
-// tables and options survive so a reinstall picks up exactly where it left off.
-if ( ! get_option( 'dragoncontentdecay_delete_data_on_uninstall' ) ) {
-	return;
-}
-
 /**
- * Remove all plugin tables, options, transients and cron events.
+ * Remove this site's tables, options, transients and cron events, but only
+ * when its owner opted in (the "Delete all data on uninstall" setting).
+ * Without the opt-in everything survives so a reinstall picks up exactly
+ * where it left off.
  */
 function dragoncontentdecay_uninstall(): void {
 	global $wpdb;
+
+	if ( ! get_option( 'dragoncontentdecay_delete_data_on_uninstall' ) ) {
+		return;
+	}
 
 	// Drop all plugin tables.
 	$tables = array(
@@ -53,4 +53,18 @@ function dragoncontentdecay_uninstall(): void {
 	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%\_transient\_timeout\_dragoncontentdecay\_%' OR option_name LIKE '%\_transient\_timeout\_dcd\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 }
 
-dragoncontentdecay_uninstall();
+// Every site of a network keeps its own tables, options and schedule.
+if ( is_multisite() ) {
+	foreach ( get_sites(
+		array(
+			'fields' => 'ids',
+			'number' => 0,
+		)
+	) as $dragoncontentdecay_site_id ) {
+		switch_to_blog( (int) $dragoncontentdecay_site_id );
+		dragoncontentdecay_uninstall();
+		restore_current_blog();
+	}
+} else {
+	dragoncontentdecay_uninstall();
+}

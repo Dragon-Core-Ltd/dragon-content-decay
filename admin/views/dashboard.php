@@ -28,7 +28,7 @@ defined( 'ABSPATH' ) || exit;
 			<h2 style="margin-top:0;"><?php esc_html_e( 'Get set up in two minutes', 'dragon-content-decay' ); ?></h2>
 			<ol style="margin:0 0 12px 18px;">
 				<li><?php esc_html_e( 'Connect your Google account - the plugin only requests read access to Analytics.', 'dragon-content-decay' ); ?></li>
-				<li><?php esc_html_e( 'Pick the GA4 property for this site.', 'dragon-content-decay' ); ?></li>
+				<li><?php esc_html_e( 'Enter the GA4 Property ID for this site on the Settings tab.', 'dragon-content-decay' ); ?></li>
 				<li><?php esc_html_e( 'The first scan compares recent traffic to your baseline and flags the posts losing ground.', 'dragon-content-decay' ); ?></li>
 			</ol>
 			<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>" class="button button-primary">

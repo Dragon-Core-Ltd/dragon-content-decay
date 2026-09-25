@@ -76,7 +76,7 @@ final class AnalyzerPathJoinTest extends TestCase {
 
 		$analyzer = AnalyzerTestSupport::analyzer();
 		$method   = new ReflectionMethod( $analyzer, 'build_search_metrics' );
-		$metrics  = $method->invoke( $analyzer, array_keys( $ga4 )[0], $gsc );
+		$metrics  = $method->invoke( $analyzer, array( array_keys( $ga4 )[0] ), $gsc );
 
 		$this->assertIsArray( $metrics );
 		$this->assertSame( 4, $metrics['clicks_current'] );
