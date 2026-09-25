@@ -179,18 +179,24 @@ class Admin {
 	 */
 	public function render_dashboard_page(): void {
 		// Get data for dashboard
-		$is_connected    = $this->oauth->is_connected();
-		$decay_threshold = get_option( 'dragoncontentdecay_decay_threshold', -20 );
+		// Local check: stored scores and sync status stay visible while a token
+		// refresh is backing off or after Google revoked access.
+		$access_revoked  = OAuth::is_access_revoked();
+		$is_connected    = $this->oauth->has_connection() || $access_revoked;
+		$decay_threshold = Analyzer::decay_threshold();
 		$posts_data      = $is_connected ? $this->get_dashboard_data() : array();
-		$current_tab     = 'dashboard';
-		$summary         = $is_connected ? $this->analyzer->get_summary() : array();
-		$last_sync       = $is_connected ? ( new Scheduler( $this->analyzer ) )->get_last_sync_info() : array();
-		$trend_icons     = array(
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only selection of which post's scores to show; no state change.
+		$focus_post_id = isset( $_GET['post_id'] ) ? absint( wp_unslash( $_GET['post_id'] ) ) : 0;
+		$focus_post    = $is_connected && $focus_post_id ? $this->get_focus_post( $focus_post_id ) : null;
+		$current_tab   = 'dashboard';
+		$summary       = $is_connected ? $this->analyzer->get_summary() : array();
+		$last_sync     = $is_connected ? ( new Scheduler( $this->analyzer ) )->get_last_sync_info() : array();
+		$trend_icons   = array(
 			'decaying' => 'arrow-down-alt',
 			'stable'   => 'minus',
 			'growing'  => 'arrow-up-alt',
 		);
-		$trend_labels    = array(
+		$trend_labels  = array(
 			'decaying' => __( 'Decaying', 'dragon-content-decay' ),
 			'stable'   => __( 'Stable', 'dragon-content-decay' ),
 			'growing'  => __( 'Growing', 'dragon-content-decay' ),
@@ -226,11 +232,12 @@ class Admin {
 			// Never expose the real secret to the page; show a fixed mask when set.
 			'client_secret'     => OAuth::has_client_secret() ? self::SECRET_MASK : '',
 			'ga4_property_id'   => get_option( 'dragoncontentdecay_ga4_property_id', '' ),
-			'decay_threshold'   => get_option( 'dragoncontentdecay_decay_threshold', -20 ),
+			'decay_threshold'   => Analyzer::decay_threshold(),
 			'comparison_period' => get_option( 'dragoncontentdecay_comparison_period', 30 ),
 			'email_frequency'   => get_option( 'dragoncontentdecay_email_frequency', 'off' ),
 			'post_types'        => get_option( 'dragoncontentdecay_post_types', array( 'post' ) ),
-			'is_connected'      => $this->oauth->is_connected(),
+			'is_connected'      => $this->oauth->has_connection(),
+			'access_revoked'    => OAuth::is_access_revoked(),
 			'gsc_enabled'       => (bool) get_option( 'dragoncontentdecay_gsc_enabled', 0 ),
 			'gsc_property'      => (string) get_option( 'dragoncontentdecay_gsc_property', '' ),
 			'gsc_scope_granted' => OAuth::has_searchconsole_scope(),
@@ -296,7 +303,7 @@ class Admin {
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_decay_threshold'] ) ) {
-			update_option( 'dragoncontentdecay_decay_threshold', intval( $_POST['dragoncontentdecay_decay_threshold'] ) );
+			update_option( 'dragoncontentdecay_decay_threshold', Analyzer::clamp_threshold( intval( $_POST['dragoncontentdecay_decay_threshold'] ) ) );
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_comparison_period'] ) ) {
@@ -321,6 +328,12 @@ class Admin {
 		update_option( 'dragoncontentdecay_delete_data_on_uninstall', empty( $_POST['dragoncontentdecay_delete_data_on_uninstall'] ) ? 0 : 1 );
 
 		add_settings_error( 'dragoncontentdecay_settings', 'settings_saved', __( 'Settings saved.', 'dragon-content-decay' ), 'success' );
+
+		// Book (or clear) the digest for the saved frequency and say so if
+		// WordPress would not schedule it, rather than implying it will be sent.
+		if ( ! Notifications::sync_digest_schedule() ) {
+			add_settings_error( 'dragoncontentdecay_settings', 'digest_not_scheduled', __( 'The email digest could not be scheduled, so it will not be sent. Save the settings again; if this keeps happening, another plugin may be blocking scheduled tasks.', 'dragon-content-decay' ), 'error' );
+		}
 	}
 
 	/**
@@ -368,26 +381,31 @@ class Admin {
 	}
 
 	/**
+	 * Most rows the dashboard table lists (lowest scores first).
+	 */
+	private const DASHBOARD_ROWS = 100;
+
+	/**
 	 * Get dashboard data
 	 */
 	private function get_dashboard_data(): array {
-		global $wpdb;
+		return $this->analyzer->get_dashboard_rows( self::DASHBOARD_ROWS );
+	}
 
-		$table_scores = $wpdb->prefix . 'dcd_scores';
+	/**
+	 * Scores for the post a "View Analytics" link was opened for, with the
+	 * trend judged against the current threshold, or null when the post has
+	 * not been scored.
+	 *
+	 * @param int $post_id Post ID.
+	 * @return array|null
+	 */
+	public function get_focus_post( int $post_id ): ?array {
+		if ( $post_id <= 0 ) {
+			return null;
+		}
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; admin-only read of plugin-owned table.
-		$results = $wpdb->get_results(
-			"SELECT s.*, p.post_title, p.post_date, p.post_modified
-             FROM {$table_scores} s
-             JOIN {$wpdb->posts} p ON s.post_id = p.ID
-             WHERE p.post_status = 'publish'
-             ORDER BY s.decay_score ASC
-             LIMIT 100",
-			ARRAY_A
-		);
-		// phpcs:enable
-
-		return is_array( $results ) ? $results : array();
+		return $this->analyzer->get_post_decay( $post_id );
 	}
 
 	/**
@@ -423,12 +441,8 @@ class Admin {
 			return;
 		}
 
-		$class = 'dcd-stable';
-		if ( $score->decay_score <= -20 ) {
-			$class = 'dcd-decaying';
-		} elseif ( $score->decay_score >= 20 ) {
-			$class = 'dcd-growing';
-		}
+		// Same rule (and threshold setting) as the dashboard.
+		$class = 'dcd-' . $this->analyzer->determine_trend( (float) $score->decay_score );
 
 		printf(
 			'<span class="dcd-score %s">%s</span>',
@@ -489,13 +503,8 @@ class Admin {
 	 */
 	public function add_analytics_link( array $actions, \WP_Post $post ): array {
 		if ( current_user_can( 'manage_options' ) ) {
-			$url                      = add_query_arg(
-				array(
-					'page'    => 'dragon-content-decay',
-					'post_id' => $post->ID,
-				),
-				admin_url( 'admin.php' )
-			);
+			// The dashboard reads post_id and shows that post's scores first.
+			$url                      = admin_url( 'tools.php?page=dragon-content-decay&post_id=' . absint( $post->ID ) );
 			$actions['dcd_analytics'] = sprintf(
 				'<a href="%s">%s</a>',
 				esc_url( $url ),

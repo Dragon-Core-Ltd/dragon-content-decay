@@ -41,7 +41,7 @@ defined( 'ABSPATH' ) || exit;
 
 	<?php
 	// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Display-only error notice flag; no state change.
-	$dragoncontentdecay_oauth_error = isset( $_GET['oauth_error'] ) ? sanitize_key( wp_unslash( $_GET['oauth_error'] ) ) : '';
+	$dragoncontentdecay_oauth_error  = isset( $_GET['oauth_error'] ) ? sanitize_key( wp_unslash( $_GET['oauth_error'] ) ) : '';
 	$dragoncontentdecay_oauth_errors = array(
 		'state'    => __( 'Google sign-in could not be verified (the request expired or did not start from this site). Please connect again.', 'dragon-content-decay' ),
 		'callback' => __( 'Google sign-in did not complete, so the site was not connected. Check the Client ID and Client Secret, then connect again.', 'dragon-content-decay' ),
@@ -51,6 +51,12 @@ defined( 'ABSPATH' ) || exit;
 	<?php if ( isset( $dragoncontentdecay_oauth_errors[ $dragoncontentdecay_oauth_error ] ) ) : ?>
 		<div class="notice notice-error is-dismissible">
 			<p><?php echo esc_html( $dragoncontentdecay_oauth_errors[ $dragoncontentdecay_oauth_error ] ); ?></p>
+		</div>
+	<?php endif; ?>
+
+	<?php if ( ! empty( $settings['access_revoked'] ) ) : ?>
+		<div class="notice notice-error">
+			<p><?php esc_html_e( 'Google no longer accepts this site\'s saved sign-in (access was revoked or has expired), so syncing has stopped. Connect to Google again below.', 'dragon-content-decay' ); ?></p>
 		</div>
 	<?php endif; ?>
 
@@ -212,7 +218,7 @@ defined( 'ABSPATH' ) || exit;
 								name="dragoncontentdecay_decay_threshold"
 								value="<?php echo esc_attr( $settings['decay_threshold'] ); ?>"
 								min="-100"
-								max="0"
+								max="-1"
 								class="small-text">
 						<p class="description">
 							<?php esc_html_e( 'Posts with traffic change below this threshold will be marked as decaying. Default: -20%', 'dragon-content-decay' ); ?>

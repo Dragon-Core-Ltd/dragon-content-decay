@@ -182,8 +182,11 @@ class Plugin {
 	 * Plugin deactivation
 	 */
 	public static function deactivate(): void {
-		// Clear scheduled events
+		// Clear scheduled events (the digests are rebooked on init after
+		// reactivation from the saved frequency).
 		wp_clear_scheduled_hook( 'dragoncontentdecay_daily_sync' );
+		wp_clear_scheduled_hook( Notifications::WEEKLY_HOOK );
+		wp_clear_scheduled_hook( Notifications::MONTHLY_HOOK );
 
 		// Flush rewrite rules
 		flush_rewrite_rules();

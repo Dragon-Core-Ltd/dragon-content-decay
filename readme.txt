@@ -19,8 +19,8 @@ Dragon Content Decay helps you identify blog posts and pages that are losing tra
 * **Google Analytics 4 Integration** - Connect directly to GA4 to fetch real traffic data
 * **Decay Detection** - Automatically identifies posts with declining traffic
 * **Visual Dashboard** - See all your content performance at a glance
-* **Post List Integration** - Decay scores appear right in your posts list
-* **Email Digests** - Weekly or monthly reports of content needing attention
+* **Post List Integration** - Decay scores appear right in your posts list, coloured by your threshold, with a View Analytics link to that post's figures
+* **Email Digests** - Weekly (Mondays) or monthly (every 30 days) reports of content needing attention, sent through your site's normal mailer
 * **Customizable Thresholds** - Set your own decay threshold percentage
 
 **How It Works:**
@@ -51,7 +51,8 @@ Three kinds of request are made to Google:
 * **Signing in.** When you connect your account, the plugin performs a standard
   OAuth handshake with Google using your client ID and secret, and stores the
   resulting access and refresh tokens in your own database. Tokens are refreshed
-  automatically when they expire. The plugin asks for read-only Analytics
+  automatically when they expire, only when the connection is used (a sync or
+  an admin screen), never on visitor page loads. The plugin asks for read-only Analytics
   access; read-only Search Console access is requested only if you turn the
   Search Console option on.
 * **Reading analytics.** When you sync - once a day, or when you press Sync
@@ -117,7 +118,7 @@ Decay score is the percentage change in pageviews between the current period and
 
 = What's a good decay threshold? =
 
-The default is -20%, meaning posts that lost more than 20% of their traffic will be flagged. You can adjust this in settings based on your site's traffic patterns.
+The default is -20%, meaning posts that lost 20% or more of their traffic will be flagged. You can adjust this in settings based on your site's traffic patterns. The dashboard, the posts list and the email digest all apply the current setting straight away, without waiting for the next sync.
 
 = Does this work with custom post types? =
 
@@ -126,6 +127,10 @@ Yes! You can select which post types to track in the settings.
 = How often does data sync? =
 
 Data syncs automatically once a day. You can also press Sync now on the dashboard at any time. Only the email digest frequency is configurable.
+
+= What happens if a sync cannot reach Google Analytics? =
+
+The sync stops without changing any scores, and the dashboard says why (for example, the connection was revoked or the request failed). If Google no longer accepts the saved sign-in, the Settings tab asks you to connect again.
 
 == Changelog ==
 

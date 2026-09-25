@@ -56,6 +56,24 @@ class OAuth {
 	private const TOKEN_OPTION = 'dragoncontentdecay_google_tokens';
 
 	/**
+	 * Option set when Google rejects the refresh token (invalid_grant: revoked,
+	 * expired or the app's access removed). The connection then counts as
+	 * disconnected until the site is reconnected.
+	 */
+	private const REVOKED_OPTION = 'dragoncontentdecay_google_auth_revoked';
+
+	/**
+	 * Transient that pauses refresh attempts after a failed one, so an outage
+	 * or a bad network is not retried on every admin page load and cron run.
+	 */
+	private const REFRESH_BACKOFF_TRANSIENT = 'dragoncontentdecay_token_refresh_backoff';
+
+	/**
+	 * How long to wait after a failed refresh before trying again.
+	 */
+	private const REFRESH_BACKOFF_SECONDS = 15 * MINUTE_IN_SECONDS;
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
@@ -82,15 +100,13 @@ class OAuth {
 			$this->client->setAccessType( 'offline' );
 			$this->client->setPrompt( 'consent' );
 
-			// Load existing tokens
+			// Load existing tokens. An expired access token is NOT refreshed
+			// here: this runs on every request, front end included, and a
+			// refresh is a blocking call to Google. is_connected() refreshes
+			// on demand when the connection is actually used.
 			$tokens = $this->get_stored_tokens();
 			if ( $tokens ) {
 				$this->client->setAccessToken( $tokens );
-
-				// Refresh token if expired
-				if ( $this->client->isAccessTokenExpired() ) {
-					$this->refresh_token();
-				}
 			}
 		} catch ( \Exception $e ) {
 			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
@@ -215,12 +231,12 @@ class OAuth {
 		}
 
 		try {
-			$tokens = $this->client->fetchAccessTokenWithAuthCode( $code );
+			$tokens = $this->request_auth_code_exchange( $code );
 
 			if ( isset( $tokens['error'] ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'DCD OAuth Error: ' . $tokens['error_description'] ?? $tokens['error'] ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+					error_log( 'DCD OAuth Error: ' . ( $tokens['error_description'] ?? $tokens['error'] ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
 				}
 				return false;
 			}
@@ -228,6 +244,9 @@ class OAuth {
 			$this->store_tokens( $tokens );
 			$this->store_granted_scopes( $tokens );
 			$this->client->setAccessToken( $tokens );
+			delete_option( self::REVOKED_OPTION );
+			delete_transient( self::REFRESH_BACKOFF_TRANSIENT );
+			Scheduler::clear_fetch_failure();
 
 			return true;
 		} catch ( \Exception $e ) {
@@ -253,12 +272,21 @@ class OAuth {
 				return false;
 			}
 
-			$tokens = $this->client->fetchAccessTokenWithRefreshToken( $refresh_token );
+			$tokens = $this->request_token_refresh( $refresh_token );
 
 			if ( isset( $tokens['error'] ) ) {
 				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Diagnostic logging of API/auth failures for troubleshooting; no sensitive data logged.
 				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-					error_log( 'DCD Token Refresh Error: ' . $tokens['error_description'] ?? $tokens['error'] ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+					error_log( 'DCD Token Refresh Error: ' . ( $tokens['error_description'] ?? $tokens['error'] ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				}
+
+				// invalid_grant is permanent (revoked or expired refresh token):
+				// stop using the connection until the site is reconnected. Any
+				// other error may be transient, so only pause retries.
+				if ( 'invalid_grant' === $tokens['error'] ) {
+					update_option( self::REVOKED_OPTION, 1, false );
+				} else {
+					set_transient( self::REFRESH_BACKOFF_TRANSIENT, 1, self::REFRESH_BACKOFF_SECONDS );
 				}
 				return false;
 			}
@@ -277,8 +305,41 @@ class OAuth {
 			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 				error_log( 'DCD Token Refresh Error: ' . $e->getMessage() ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
 			}
+			set_transient( self::REFRESH_BACKOFF_TRANSIENT, 1, self::REFRESH_BACKOFF_SECONDS );
 			return false;
 		}
+	}
+
+	/**
+	 * Exchange the authorization code from the callback for tokens at
+	 * Google's token endpoint (a blocking HTTP request).
+	 *
+	 * @param string $code Authorization code.
+	 * @return array Token response, with an 'error' key on failure.
+	 */
+	protected function request_auth_code_exchange( string $code ): array {
+		return (array) $this->client->fetchAccessTokenWithAuthCode( $code );
+	}
+
+	/**
+	 * Exchange the refresh token for a new access token at Google's token
+	 * endpoint (a blocking HTTP request).
+	 *
+	 * @param string $refresh_token Refresh token.
+	 * @return array Token response, with an 'error' key on failure.
+	 */
+	protected function request_token_refresh( string $refresh_token ): array {
+		return (array) $this->client->fetchAccessTokenWithRefreshToken( $refresh_token );
+	}
+
+	/**
+	 * Whether Google has rejected the saved refresh token, so the site must be
+	 * reconnected.
+	 *
+	 * @return bool
+	 */
+	public static function is_access_revoked(): bool {
+		return (bool) get_option( self::REVOKED_OPTION, false );
 	}
 
 	/**
@@ -380,10 +441,26 @@ class OAuth {
 	}
 
 	/**
-	 * Check if connected to Google
+	 * Whether the site has a saved Google connection that Google has not
+	 * rejected. Local only: never refreshes or calls Google, so admin screens
+	 * can show stored scores and status even while a refresh is backing off.
+	 *
+	 * @return bool
+	 */
+	public function has_connection(): bool {
+		return null !== $this->client && ! self::is_access_revoked() && null !== $this->get_stored_tokens();
+	}
+
+	/**
+	 * Check if connected to Google with a usable access token, refreshing an
+	 * expired one (a blocking call to Google). Use before making API calls.
 	 */
 	public function is_connected(): bool {
 		if ( ! $this->client ) {
+			return false;
+		}
+
+		if ( self::is_access_revoked() ) {
 			return false;
 		}
 
@@ -394,12 +471,16 @@ class OAuth {
 
 		$this->client->setAccessToken( $tokens );
 
-		// If expired, try to refresh
-		if ( $this->client->isAccessTokenExpired() ) {
-			return $this->refresh_token();
+		if ( ! $this->client->isAccessTokenExpired() ) {
+			return true;
 		}
 
-		return true;
+		// Expired: refresh, unless a recent attempt failed.
+		if ( get_transient( self::REFRESH_BACKOFF_TRANSIENT ) ) {
+			return false;
+		}
+
+		return $this->refresh_token();
 	}
 
 	/**
@@ -416,6 +497,9 @@ class OAuth {
 
 		delete_option( self::TOKEN_OPTION );
 		delete_option( self::GRANTED_SCOPES_OPTION );
+		delete_option( self::REVOKED_OPTION );
+		delete_transient( self::REFRESH_BACKOFF_TRANSIENT );
+		Scheduler::clear_fetch_failure();
 		$this->client = null;
 	}
 

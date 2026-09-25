@@ -43,19 +43,38 @@ class Analyzer {
 	/**
 	 * Calculate decay scores for all posts
 	 *
-	 * @return array{analyzed:int,failed:int,cursor_saved:bool} Posts scored, posts
-	 *               whose score row could not be written, and whether the
-	 *               rotating cursor was persisted for the next run.
+	 * @return array{analyzed:int,failed:int,cursor_saved:bool,error?:string,search_error?:string}
+	 *               Posts scored, posts whose score row could not be written,
+	 *               whether the rotating cursor was persisted for the next run,
+	 *               why the run was aborted when the GA4 data could not be
+	 *               fetched, and why the Search Console data could not be
+	 *               fetched (the stored search columns are then kept).
 	 */
 	public function analyze_all(): array {
 		$period_days = (int) get_option( 'dragoncontentdecay_comparison_period', 30 );
 		$data        = $this->api_ga4->fetch_comparison_data( $period_days );
+
+		// A failed request is not zero views: scoring half the data would flag
+		// every post as +/-100%. Keep the existing scores and report why.
+		$fetch_error = (string) ( $data['error'] ?? '' );
+		if ( '' !== $fetch_error ) {
+			return array(
+				'analyzed'     => 0,
+				'failed'       => 0,
+				'cursor_saved' => true,
+				'error'        => $fetch_error,
+			);
+		}
 
 		// Key both periods by the same normalised path the GSC map uses so the
 		// join below is exact and GA4 rows that differ only in trailing slash or
 		// encoding are counted once.
 		$data['current']  = self::normalize_ga4_map( (array) ( $data['current'] ?? array() ) );
 		$data['previous'] = self::normalize_ga4_map( (array) ( $data['previous'] ?? array() ) );
+		$truncated        = array(
+			'current'  => ! empty( $data['truncated']['current'] ),
+			'previous' => ! empty( $data['truncated']['previous'] ),
+		);
 
 		$result = array(
 			'analyzed'     => 0,
@@ -89,8 +108,17 @@ class Analyzer {
 		// resolver.
 		$slug_map = $this->build_slug_map( $all_paths );
 
-		// Optional Google Search Console signal, keyed by the same normalised paths.
-		$gsc = $this->maybe_fetch_gsc( $period_days );
+		// Optional Google Search Console signal, keyed by the same normalised
+		// paths. A failed fetch is not zero clicks: the stored search columns
+		// are then left as they were and the reason is reported.
+		$gsc                    = $this->maybe_fetch_gsc( $period_days );
+		$search_error           = (string) ( $gsc['error'] ?? '' );
+		$keep_search            = '' !== $search_error;
+		$result['search_error'] = $search_error;
+		$search_truncated       = array(
+			'current'  => ! empty( $gsc['truncated']['current'] ),
+			'previous' => ! empty( $gsc['truncated']['previous'] ),
+		);
 
 		// Bound the run to a wall-clock budget so a large property (thousands of
 		// multi-segment paths, each needing a precise rewrite lookup) cannot exhaust
@@ -115,6 +143,14 @@ class Analyzer {
 			++$index;
 			++$processed;
 
+			// A period whose report was too large to read in full holds only
+			// its busiest paths, so a path missing from it may still have had
+			// views: scoring it would report a false +/-100%.
+			if ( ( $truncated['current'] && ! isset( $data['current'][ $path ] ) )
+				|| ( $truncated['previous'] && ! isset( $data['previous'][ $path ] ) ) ) {
+				continue;
+			}
+
 			$post_id = $this->resolve_path( $path, $slug_map );
 			if ( ! $post_id ) {
 				continue;
@@ -123,7 +159,16 @@ class Analyzer {
 			$current_views  = $data['current'][ $path ]['pageviews'] ?? 0;
 			$previous_views = $data['previous'][ $path ]['pageviews'] ?? 0;
 
-			if ( $this->calculate_and_store_score( $post_id, $current_views, $previous_views, $this->build_search_metrics( $path, $gsc ) ) ) {
+			// Likewise for Search Console: a path missing from a period that was
+			// only partly read may still have had clicks there, so its stored
+			// search values are kept rather than replaced with a false zero.
+			$keep_path_search = $keep_search
+				|| ( $search_truncated['current'] && ! isset( $gsc['current'][ $path ] ) )
+				|| ( $search_truncated['previous'] && ! isset( $gsc['previous'][ $path ] ) );
+
+			$search = $keep_path_search ? null : $this->build_search_metrics( $path, $gsc );
+
+			if ( $this->calculate_and_store_score( $post_id, $current_views, $previous_views, $search, $keep_path_search ) ) {
 				++$result['analyzed'];
 			} else {
 				++$result['failed'];
@@ -264,7 +309,7 @@ class Analyzer {
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.PreparedSQL.NotPrepared -- Custom read; the query is prepared below with only fixed %s placeholder lists interpolated.
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $slug_ph/$type_ph are fixed lists of %s placeholders and $wpdb->posts is the core table name; all values are prepared.
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $slug_ph/$type_ph are fixed lists of %s placeholders and $wpdb->posts is the core table name; all values are prepared.
 					"SELECT ID, post_name FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_name IN ( {$slug_ph} ) AND post_type IN ( {$type_ph} )",
 					array_merge( $chunk, $types )
 				)
@@ -315,21 +360,45 @@ class Analyzer {
 	 * The decay score stays GA4-pageviews based; the optional Search Console
 	 * metrics are stored alongside as a supplementary signal. $wpdb->replace
 	 * rewrites the whole row, so the search_* columns are always written (0 when
-	 * no GSC data applies) rather than being reset to defaults.
+	 * no GSC data applies) rather than being reset to defaults. With
+	 * $keep_search (the Search Console fetch failed) only the pageview columns
+	 * are written and the stored search_* values are left as they were.
 	 *
 	 * @param int        $post_id        Post ID.
 	 * @param int        $current_views  Current-period pageviews.
 	 * @param int        $previous_views Previous-period pageviews.
 	 * @param array|null $search         Optional GSC metrics for this post.
+	 * @param bool       $keep_search    Keep the stored search_* columns.
 	 * @return bool Whether the score row was written.
 	 */
-	public function calculate_and_store_score( int $post_id, int $current_views, int $previous_views, ?array $search = null ): bool {
+	public function calculate_and_store_score( int $post_id, int $current_views, int $previous_views, ?array $search = null, bool $keep_search = false ): bool {
 		$score  = $this->calculate_decay_score( $current_views, $previous_views );
 		$trend  = $this->determine_trend( $score );
 		$search = is_array( $search ) ? $search : array();
 
 		global $wpdb;
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+
+		if ( $keep_search ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Writing to a plugin-owned custom table; no core API or cache applies.
+			$written = $wpdb->query(
+				$wpdb->prepare(
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table name is the site prefix plus a fixed basename (%i needs WordPress 6.2; the plugin supports 6.0).
+					"INSERT INTO {$table_scores} (post_id, decay_score, trend, pageviews_current, pageviews_previous)
+					 VALUES (%d, %f, %s, %d, %d)
+					 ON DUPLICATE KEY UPDATE decay_score = VALUES(decay_score), trend = VALUES(trend),
+						pageviews_current = VALUES(pageviews_current), pageviews_previous = VALUES(pageviews_previous),
+						last_calculated = CURRENT_TIMESTAMP",
+					$post_id,
+					$score,
+					$trend,
+					$current_views,
+					$previous_views
+				)
+			);
+
+			return false !== $written;
+		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Writing to a plugin-owned custom table; no core API or cache applies.
 		$written = $wpdb->replace(
@@ -357,12 +426,17 @@ class Analyzer {
 	 * has been granted; otherwise an empty structure.
 	 *
 	 * @param int $period_days Comparison period.
-	 * @return array{current: array<string,array>, previous: array<string,array>}
+	 * @return array{current: array<string,array>, previous: array<string,array>, error?: string, truncated?: array{current: bool, previous: bool}}
 	 */
 	private function maybe_fetch_gsc( int $period_days ): array {
 		$empty = array(
-			'current'  => array(),
-			'previous' => array(),
+			'current'   => array(),
+			'previous'  => array(),
+			'error'     => '',
+			'truncated' => array(
+				'current'  => false,
+				'previous' => false,
+			),
 		);
 
 		if ( ! get_option( 'dragoncontentdecay_gsc_enabled' ) || ! OAuth::has_searchconsole_scope() ) {
@@ -420,13 +494,33 @@ class Analyzer {
 	}
 
 	/**
+	 * Clamp a decay threshold to -100..-1. At 0 or above an unchanged post
+	 * (score 0) would count as both decaying and growing.
+	 *
+	 * @param mixed $value Stored or submitted threshold.
+	 * @return int
+	 */
+	public static function clamp_threshold( $value ): int {
+		return max( -100, min( -1, (int) $value ) );
+	}
+
+	/**
+	 * The decay threshold setting, within -100..-1.
+	 *
+	 * @return int
+	 */
+	public static function decay_threshold(): int {
+		return self::clamp_threshold( get_option( 'dragoncontentdecay_decay_threshold', -20 ) );
+	}
+
+	/**
 	 * Determine trend based on decay score
 	 *
 	 * @param float $score Decay score percentage
 	 * @return string Trend constant
 	 */
 	public function determine_trend( float $score ): string {
-		$threshold = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
+		$threshold = self::decay_threshold();
 
 		if ( $score <= $threshold ) {
 			return self::TREND_DECAYING;
@@ -449,7 +543,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
-		$threshold    = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
+		$threshold    = self::decay_threshold();
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
 		$results = $wpdb->get_results(
@@ -472,7 +566,54 @@ class Analyzer {
 	}
 
 	/**
-	 * Get posts by trend
+	 * Replace each row's stored trend with the trend its score has under the
+	 * CURRENT threshold. The stored label reflects the threshold at sync time;
+	 * the summary counts use the live setting, so every screen re-derives it.
+	 *
+	 * @param array $rows Score rows with a decay_score field.
+	 * @return array
+	 */
+	public function with_current_trend( array $rows ): array {
+		foreach ( $rows as $i => $row ) {
+			if ( is_array( $row ) && isset( $row['decay_score'] ) ) {
+				$rows[ $i ]['trend'] = $this->determine_trend( (float) $row['decay_score'] );
+			}
+		}
+		return $rows;
+	}
+
+	/**
+	 * Rows for the dashboard table: published posts, lowest score first, with
+	 * the trend judged against the current threshold.
+	 *
+	 * @param int $limit Maximum number of rows.
+	 * @return array
+	 */
+	public function get_dashboard_rows( int $limit = 100 ): array {
+		global $wpdb;
+
+		$table_scores = $wpdb->prefix . 'dcd_scores';
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT s.*, p.post_title, p.post_date, p.post_modified
+                 FROM {$table_scores} s
+                 JOIN {$wpdb->posts} p ON s.post_id = p.ID
+                 WHERE p.post_status = 'publish'
+                 ORDER BY s.decay_score ASC
+                 LIMIT %d",
+				$limit
+			),
+			ARRAY_A
+		);
+		// phpcs:enable
+
+		return is_array( $results ) ? $this->with_current_trend( $results ) : array();
+	}
+
+	/**
+	 * Get posts by trend, judged by score against the current threshold.
 	 *
 	 * @param string $trend One of TREND_DECAYING, TREND_STABLE, TREND_GROWING
 	 * @param int    $limit Maximum number of posts
@@ -482,31 +623,41 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$threshold    = self::decay_threshold();
 
-		$order = self::TREND_GROWING === $trend ? 'DESC' : 'ASC';
+		if ( self::TREND_DECAYING === $trend ) {
+			$where = $wpdb->prepare( 's.decay_score <= %f', $threshold );
+			$order = 'ASC';
+		} elseif ( self::TREND_GROWING === $trend ) {
+			$where = $wpdb->prepare( 's.decay_score >= %f', abs( $threshold ) );
+			$order = 'DESC';
+		} else {
+			$where = $wpdb->prepare( 's.decay_score > %f AND s.decay_score < %f', $threshold, abs( $threshold ) );
+			$order = 'ASC';
+		}
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix and $order limited to a hardcoded ASC/DESC keyword; values passed through $wpdb->prepare().
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, $where built by $wpdb->prepare() above and $order limited to a hardcoded ASC/DESC keyword.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT s.*, p.post_title, p.post_date, p.post_modified
                  FROM {$table_scores} s
                  JOIN {$wpdb->posts} p ON s.post_id = p.ID
-                 WHERE s.trend = %s
+                 WHERE {$where}
                  AND p.post_status = 'publish'
                  ORDER BY s.decay_score {$order}
                  LIMIT %d",
-				$trend,
 				$limit
 			),
 			ARRAY_A
 		);
 		// phpcs:enable
 
-		return is_array( $results ) ? $results : array();
+		return is_array( $results ) ? $this->with_current_trend( $results ) : array();
 	}
 
 	/**
-	 * Get summary statistics
+	 * Get summary statistics over published posts (the same set the dashboard
+	 * table and the digest list), judged against the current threshold.
 	 *
 	 * @return array
 	 */
@@ -514,28 +665,29 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
-		$threshold    = (int) get_option( 'dragoncontentdecay_decay_threshold', -20 );
+		$threshold    = self::decay_threshold();
+		$from         = "{$table_scores} s JOIN {$wpdb->posts} p ON s.post_id = p.ID WHERE p.post_status = 'publish'";
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
-		$total = $wpdb->get_var( "SELECT COUNT(*) FROM {$table_scores}" );
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix and the core posts table, not user input; values passed through $wpdb->prepare().
+		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$from}" );
 
-		$decaying = $wpdb->get_var(
+		$decaying = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table_scores} WHERE decay_score <= %f",
+				"SELECT COUNT(*) FROM {$from} AND s.decay_score <= %f",
 				$threshold
 			)
 		);
 
-		$growing = $wpdb->get_var(
+		$growing = (int) $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT COUNT(*) FROM {$table_scores} WHERE decay_score >= %f",
+				"SELECT COUNT(*) FROM {$from} AND s.decay_score >= %f",
 				abs( $threshold )
 			)
 		);
 
-		$stable = $total - $decaying - $growing;
+		$stable = max( 0, $total - $decaying - $growing );
 
-		$avg_decay = $wpdb->get_var( "SELECT AVG(decay_score) FROM {$table_scores}" );
+		$avg_decay = $wpdb->get_var( "SELECT AVG(s.decay_score) FROM {$from}" );
 		// phpcs:enable
 
 		return array(
@@ -568,6 +720,10 @@ class Analyzer {
 		);
 		// phpcs:enable
 
-		return is_array( $result ) ? $result : null;
+		if ( ! is_array( $result ) ) {
+			return null;
+		}
+
+		return $this->with_current_trend( array( $result ) )[0];
 	}
 }

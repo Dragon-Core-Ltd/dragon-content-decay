@@ -68,6 +68,19 @@ class Scheduler {
 			);
 		}
 
+		if ( ! empty( $result['error'] ) ) {
+			wp_send_json_error(
+				array(
+					'message' => sprintf(
+						/* translators: %s: why the analytics data could not be fetched */
+						__( 'Sync failed, so no scores were changed. %s', 'dragon-content-decay' ),
+						$result['error']
+					),
+					'status'  => $result['status'],
+				)
+			);
+		}
+
 		if ( self::STATUS_COMPLETE !== $result['status'] ) {
 			wp_send_json_error(
 				array(
@@ -116,7 +129,7 @@ class Scheduler {
 	/**
 	 * Perform sync operation
 	 *
-	 * @return array ['synced' => int, 'analyzed' => int, 'failed' => int, 'status' => string]
+	 * @return array ['synced' => int, 'analyzed' => int, 'failed' => int, 'status' => string, 'error' => string when the data could not be fetched]
 	 */
 	public function sync(): array {
 		// Guard against overlapping syncs (the daily cron and a manual sync, or two
@@ -142,7 +155,29 @@ class Scheduler {
 			$start_time = microtime( true );
 
 			// Analyze all posts and calculate decay scores
-			$outcome  = $this->analyzer->analyze_all();
+			$outcome = $this->analyzer->analyze_all();
+
+			// The analytics data could not be fetched: nothing was scored, so
+			// record the failure and its reason but keep the last good sync time.
+			$error = (string) ( $outcome['error'] ?? '' );
+			if ( '' !== $error ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+					error_log( 'DCD: Sync failed: ' . $error ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+				}
+
+				update_option( 'dragoncontentdecay_last_sync_status', self::STATUS_FAILED );
+				update_option( 'dragoncontentdecay_last_sync_error', $error, false );
+
+				return array(
+					'synced'   => 0,
+					'analyzed' => 0,
+					'failed'   => 0,
+					'status'   => self::STATUS_FAILED,
+					'error'    => $error,
+				);
+			}
+
 			$analyzed = (int) ( $outcome['analyzed'] ?? 0 );
 			$failed   = (int) ( $outcome['failed'] ?? 0 );
 			$status   = self::status_for( $analyzed, $failed, ! empty( $outcome['cursor_saved'] ) );
@@ -160,6 +195,16 @@ class Scheduler {
 			update_option( 'dragoncontentdecay_last_sync_count', $analyzed );
 			update_option( 'dragoncontentdecay_last_sync_failed', $failed );
 			update_option( 'dragoncontentdecay_last_sync_status', $status );
+			delete_option( 'dragoncontentdecay_last_sync_error' );
+
+			// Pageviews were scored, but a failed Search Console fetch left the
+			// search columns at their previous values: say why.
+			$search_error = (string) ( $outcome['search_error'] ?? '' );
+			if ( '' !== $search_error ) {
+				update_option( 'dragoncontentdecay_last_search_error', $search_error, false );
+			} else {
+				delete_option( 'dragoncontentdecay_last_search_error' );
+			}
 
 			return array(
 				'synced'   => $analyzed,
@@ -169,6 +214,23 @@ class Scheduler {
 			);
 		} finally {
 			$this->release_lock();
+		}
+	}
+
+	/**
+	 * Forget a sync that failed because the analytics data could not be
+	 * fetched, once the connection has changed (reconnected or disconnected),
+	 * so the dashboard stops showing the old reason. A run whose score writes
+	 * failed is left alone: that is not a connection problem.
+	 */
+	public static function clear_fetch_failure(): void {
+		if ( '' === (string) get_option( 'dragoncontentdecay_last_sync_error', '' ) ) {
+			return;
+		}
+
+		delete_option( 'dragoncontentdecay_last_sync_error' );
+		if ( self::STATUS_FAILED === get_option( 'dragoncontentdecay_last_sync_status' ) ) {
+			delete_option( 'dragoncontentdecay_last_sync_status' );
 		}
 	}
 
@@ -240,11 +302,13 @@ class Scheduler {
 		$count     = get_option( 'dragoncontentdecay_last_sync_count', 0 );
 
 		return array(
-			'timestamp' => $timestamp,
-			'formatted' => $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : __( 'Never', 'dragon-content-decay' ),
-			'count'     => $count,
-			'failed'    => (int) get_option( 'dragoncontentdecay_last_sync_failed', 0 ),
-			'status'    => (string) get_option( 'dragoncontentdecay_last_sync_status', self::STATUS_COMPLETE ),
+			'timestamp'    => $timestamp,
+			'formatted'    => $timestamp ? wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp ) : __( 'Never', 'dragon-content-decay' ),
+			'count'        => $count,
+			'failed'       => (int) get_option( 'dragoncontentdecay_last_sync_failed', 0 ),
+			'status'       => (string) get_option( 'dragoncontentdecay_last_sync_status', self::STATUS_COMPLETE ),
+			'error'        => (string) get_option( 'dragoncontentdecay_last_sync_error', '' ),
+			'search_error' => (string) get_option( 'dragoncontentdecay_last_search_error', '' ),
 		);
 	}
 

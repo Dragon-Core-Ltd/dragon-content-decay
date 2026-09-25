@@ -39,8 +39,165 @@ class Notifications {
 		add_action( self::WEEKLY_HOOK, array( $this, 'send_weekly_digest' ) );
 		add_action( self::MONTHLY_HOOK, array( $this, 'send_monthly_digest' ) );
 
+		// Core has no monthly recurrence; without this the monthly digest can
+		// never be booked. Registered on every request because the digest
+		// itself fires from cron.
+		add_filter( 'cron_schedules', array( __CLASS__, 'add_schedules' ) );
+
 		// Reschedule digests when frequency changes
 		add_action( 'update_option_dragoncontentdecay_email_frequency', array( $this, 'reschedule_digests' ), 10, 2 );
+
+		// Book a missing digest event for the chosen frequency (e.g. a monthly
+		// digest chosen before the recurrence was registered).
+		add_action( 'init', array( $this, 'ensure_digest_scheduled' ) );
+	}
+
+	/**
+	 * Add the 30-day 'monthly' recurrence unless something already provides one.
+	 *
+	 * @param array $schedules Registered cron schedules.
+	 * @return array
+	 */
+	public static function add_schedules( $schedules ): array {
+		$schedules = is_array( $schedules ) ? $schedules : array();
+
+		if ( ! isset( $schedules['monthly'] ) ) {
+			$schedules['monthly'] = array(
+				'interval' => 30 * DAY_IN_SECONDS,
+				'display'  => __( 'Once Monthly', 'dragon-content-decay' ),
+			);
+		}
+
+		return $schedules;
+	}
+
+	/**
+	 * Make the booked digest events match the chosen frequency: the chosen
+	 * digest is booked if missing, and the other one is cleared.
+	 */
+	public function ensure_digest_scheduled(): void {
+		self::sync_digest_schedule();
+	}
+
+	/**
+	 * Make the booked digest events match the chosen frequency.
+	 *
+	 * @return bool False when a digest is chosen but is not in the schedule.
+	 */
+	public static function sync_digest_schedule(): bool {
+		$frequency = (string) get_option( 'dragoncontentdecay_email_frequency', 'off' );
+		$wanted    = self::hook_for( $frequency );
+
+		foreach ( array( self::WEEKLY_HOOK, self::MONTHLY_HOOK ) as $hook ) {
+			if ( $hook !== $wanted && wp_next_scheduled( $hook ) ) {
+				wp_clear_scheduled_hook( $hook );
+			}
+		}
+
+		if ( '' === $wanted || wp_next_scheduled( $wanted ) ) {
+			return true;
+		}
+
+		return self::book_digest( $frequency );
+	}
+
+	/**
+	 * Cron hook for a digest frequency, or '' when digests are off.
+	 *
+	 * @param string $frequency 'weekly', 'monthly' or anything else for off.
+	 * @return string
+	 */
+	private static function hook_for( string $frequency ): string {
+		if ( 'weekly' === $frequency ) {
+			return self::WEEKLY_HOOK;
+		}
+		if ( 'monthly' === $frequency ) {
+			return self::MONTHLY_HOOK;
+		}
+		return '';
+	}
+
+	/**
+	 * Book the digest event for a frequency and confirm it is in the cron array.
+	 *
+	 * @param string $frequency 'weekly' or 'monthly'.
+	 * @return bool Whether the event is booked.
+	 */
+	private static function book_digest( string $frequency ): bool {
+		$hook = self::hook_for( $frequency );
+		if ( '' === $hook ) {
+			return false;
+		}
+
+		$booked = wp_schedule_event( self::first_send_time( $frequency ), $frequency, $hook, array(), true );
+		if ( true !== $booked || ! wp_next_scheduled( $hook ) ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+				error_log( 'DCD: could not schedule the ' . $frequency . ' digest: ' . ( is_wp_error( $booked ) ? $booked->get_error_message() : 'unknown reason' ) ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log -- Debug logging, only when WP_DEBUG is enabled.
+			}
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * First send time for a digest: next Monday or the 1st of next month, at
+	 * 9am in the site's timezone (PHP itself runs in UTC under WordPress).
+	 *
+	 * @param string $frequency 'weekly' or 'monthly'.
+	 * @return int Unix timestamp.
+	 */
+	private static function first_send_time( string $frequency ): int {
+		$now  = new \DateTimeImmutable( 'now', wp_timezone() );
+		$when = 'weekly' === $frequency
+			? $now->modify( 'next monday' )
+			: $now->modify( 'first day of next month' );
+
+		return $when->setTime( 9, 0 )->getTimestamp();
+	}
+
+	/**
+	 * Why the scores in a digest may be out of date, or '' when the last sync
+	 * worked: Google revoked access, or the last sync could not fetch data.
+	 *
+	 * @return string
+	 */
+	private static function sync_warning(): string {
+		if ( OAuth::is_access_revoked() ) {
+			return __( 'Google no longer accepts this site\'s saved sign-in, so syncing has stopped and the scores below are from the last successful sync. Connect to Google again on the Settings tab to resume.', 'dragon-content-decay' );
+		}
+
+		$error = (string) get_option( 'dragoncontentdecay_last_sync_error', '' );
+		if ( '' !== $error ) {
+			return sprintf(
+				/* translators: %s: why the analytics data could not be fetched */
+				__( 'The last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
+				$error
+			);
+		}
+
+		return '';
+	}
+
+	/**
+	 * The site name as plain text. get_bloginfo( 'name' ) is stored HTML-escaped,
+	 * which would put "&amp;" and "&#039;" into a subject line or plain-text body.
+	 *
+	 * @return string
+	 */
+	private static function site_name(): string {
+		return wp_specialchars_decode( (string) get_bloginfo( 'name' ), ENT_QUOTES );
+	}
+
+	/**
+	 * Analyzer used to build a digest. Overridable in tests.
+	 *
+	 * @return Analyzer
+	 */
+	protected function make_analyzer(): Analyzer {
+		$dragoncontentdecay_oauth = new OAuth();
+		return new Analyzer( new API_GA4( $dragoncontentdecay_oauth ), new API_GSC( $dragoncontentdecay_oauth ) );
 	}
 
 	/**
@@ -71,9 +228,8 @@ class Notifications {
 	 * @param string $type 'weekly' or 'monthly'
 	 */
 	private function send_digest( string $type ): void {
-		$dragoncontentdecay_oauth = new OAuth();
-		$analyzer                 = new Analyzer( new API_GA4( $dragoncontentdecay_oauth ), new API_GSC( $dragoncontentdecay_oauth ) );
-		$decaying_posts           = $analyzer->get_decaying_posts( 10 );
+		$analyzer       = $this->make_analyzer();
+		$decaying_posts = $analyzer->get_decaying_posts( 10 );
 
 		if ( empty( $decaying_posts ) ) {
 			return;
@@ -81,7 +237,7 @@ class Notifications {
 
 		$summary     = $analyzer->get_summary();
 		$admin_email = get_option( 'admin_email' );
-		$site_name   = get_bloginfo( 'name' );
+		$site_name   = self::site_name();
 
 		$decaying = (int) $summary['decaying'];
 		$subject  = sprintf(
@@ -93,9 +249,11 @@ class Notifications {
 
 		$message = $this->build_email_message( $decaying_posts, $summary, $type );
 
+		// No From header: the site's mailer (core default or an SMTP plugin)
+		// chooses the sender, so the digest passes the same SPF/DMARC checks as
+		// the site's other mail.
 		$headers = array(
 			'Content-Type: text/html; charset=UTF-8',
-			'From: ' . $site_name . ' <' . $admin_email . '>',
 		);
 
 		wp_mail( $admin_email, $subject, $message, $headers );
@@ -110,7 +268,7 @@ class Notifications {
 	 * @return string HTML message
 	 */
 	private function build_email_message( array $posts, array $summary, string $type ): string {
-		$site_name = get_bloginfo( 'name' );
+		$site_name = self::site_name();
 		$period    = 'weekly' === $type ? __( 'Weekly Summary', 'dragon-content-decay' ) : __( 'Monthly Summary', 'dragon-content-decay' );
 
 		ob_start();
@@ -156,6 +314,13 @@ class Notifications {
 					</p>
 				</div>
 				<div class="content">
+					<?php $dragoncontentdecay_sync_warning = self::sync_warning(); ?>
+					<?php if ( '' !== $dragoncontentdecay_sync_warning ) : ?>
+						<p style="background: #fee2e2; color: #991b1b; padding: 12px 15px; border-radius: 6px; margin-top: 0;">
+							<?php echo esc_html( $dragoncontentdecay_sync_warning ); ?>
+							<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>" style="color: #991b1b;"><?php esc_html_e( 'Open settings', 'dragon-content-decay' ); ?></a>
+						</p>
+					<?php endif; ?>
 					<div class="stats">
 						<div class="stat">
 							<div class="stat-value"><?php echo esc_html( number_format_i18n( (int) $summary['decaying'] ) ); ?></div>
@@ -194,7 +359,7 @@ class Notifications {
 									);
 									?>
 									&middot;
-									<a href="<?php echo esc_url( get_edit_post_link( $post['post_id'] ) ); ?>"><?php esc_html_e( 'Edit', 'dragon-content-decay' ); ?></a>
+									<a href="<?php echo esc_url( admin_url( 'post.php?post=' . absint( $post['post_id'] ) . '&action=edit' ) ); ?>"><?php esc_html_e( 'Edit', 'dragon-content-decay' ); ?></a>
 								</div>
 							</div>
 						<?php endforeach; ?>
@@ -222,22 +387,21 @@ class Notifications {
 	 *
 	 * @param mixed $old_value
 	 * @param mixed $new_value
+	 * @return bool False when a digest was chosen but could not be booked.
 	 */
-	public function reschedule_digests( $old_value, $new_value ): void {
+	public function reschedule_digests( $old_value, $new_value ): bool {
+		unset( $old_value );
+
 		// Clear existing schedules
 		wp_clear_scheduled_hook( self::WEEKLY_HOOK );
 		wp_clear_scheduled_hook( self::MONTHLY_HOOK );
 
-		// Schedule new events based on frequency
-		switch ( $new_value ) {
-			case 'weekly':
-				wp_schedule_event( strtotime( 'next monday 9am' ), 'weekly', self::WEEKLY_HOOK );
-				break;
-
-			case 'monthly':
-				wp_schedule_event( strtotime( 'first day of next month 9am' ), 'monthly', self::MONTHLY_HOOK );
-				break;
+		$frequency = is_string( $new_value ) ? $new_value : '';
+		if ( '' === self::hook_for( $frequency ) ) {
+			return true;
 		}
+
+		return self::book_digest( $frequency );
 	}
 
 	/**
@@ -247,7 +411,7 @@ class Notifications {
 	 */
 	public function send_test_email(): bool {
 		$admin_email = get_option( 'admin_email' );
-		$site_name   = get_bloginfo( 'name' );
+		$site_name   = self::site_name();
 
 		$subject = sprintf(
 			/* translators: %s: Site name */

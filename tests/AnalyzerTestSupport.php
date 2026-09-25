@@ -60,6 +60,9 @@ final class AnalyzerTestSupport {
 			public string $prefix = 'wp_';
 			public string $posts  = 'wp_posts';
 			public array $replaced = array();
+			public array $queries  = array();
+			/** @var int|false */
+			public $query_result = 1;
 			private array $results;
 			private array $slugs;
 
@@ -83,6 +86,11 @@ final class AnalyzerTestSupport {
 					);
 				}
 				return $rows;
+			}
+
+			public function query( string $query ) {
+				$this->queries[] = $query;
+				return $this->query_result;
 			}
 
 			public function replace( string $table, array $data, $format = null ) {

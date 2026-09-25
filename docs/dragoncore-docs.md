@@ -10,6 +10,13 @@ Connects to Google Analytics 4 and finds the posts losing traffic - so you refre
 ## Reading the dashboard
 Decaying posts are your refresh queue: each row shows the traffic trend and links straight to the editor. Prioritise the ones with the steepest decline and the most historical traffic - those are recoverable rankings.
 
+The summary cards, the table and the posts-list **Decay** column all judge scores against your current threshold, so changing it in Settings takes effect immediately. The table lists the 100 lowest-scoring published posts; the cards count every tracked published post. **View Analytics** under a post in the posts list opens the dashboard with that post's figures at the top.
+
+If a sync cannot fetch data from Google Analytics, no scores are changed and the dashboard shows the reason next to *Last synced*.
+
+## Email digests
+Choose **Weekly** (Monday mornings) or **Monthly** (every 30 days, starting on the 1st) in Settings. The digest goes to the site admin email through your site's normal mailer - the plugin does not set its own From address, so an SMTP plugin's sender settings apply. Each post links to its editor.
+
 ## Search Console (optional)
 Alongside GA4 traffic, you can pull Google Search Console data to see search **clicks** and **impressions** decline - often the earliest sign a page is slipping:
 1. In **Settings**, tick **Search Console** and save.
@@ -27,5 +34,6 @@ OAuth tokens are stored encrypted in your database; traffic data is fetched from
 ## Troubleshooting
 - **A message after returning from Google** - a cancelled or refused sign-in, a sign-in that did not complete (check the Client ID and Client Secret) or one that expired or did not start from this site each leave the site unconnected and say which; connect again.
 - **"Connect" fails after approving** - check the property picker: the Google account must have access to the GA4 property for this domain.
+- **"Google no longer accepts this site's saved sign-in"** - the refresh token was revoked or expired (for example, access was removed in your Google account). Syncing stops until you connect again from Settings. A temporary failure to refresh is retried after 15 minutes.
 - **Numbers look different from GA4's UI** - the plugin reads sessions per page path; GA4's UI often shows filtered/modelled views.
 - **Search Console shows no data** - confirm the Search Console API is enabled in your Google Cloud project and that you reconnected after ticking the option; Search Console data also lags real time by 2–3 days.

@@ -36,6 +36,14 @@ defined( 'ABSPATH' ) || exit;
 			</a>
 		</div>
 	<?php else : ?>
+		<?php if ( $access_revoked ) : ?>
+			<div class="notice notice-error inline">
+				<p>
+					<?php esc_html_e( 'Google no longer accepts this site\'s saved sign-in (access was revoked or has expired), so syncing has stopped. The scores below are from the last successful sync.', 'dragon-content-decay' ); ?>
+					<a href="<?php echo esc_url( admin_url( 'tools.php?page=dragon-content-decay&tab=settings' ) ); ?>"><?php esc_html_e( 'Connect to Google again', 'dragon-content-decay' ); ?></a>
+				</p>
+			</div>
+		<?php endif; ?>
 		<!-- Summary Cards -->
 		<div class="dcd-summary-cards">
 			<div class="dcd-card dcd-card-decaying">
@@ -90,7 +98,17 @@ defined( 'ABSPATH' ) || exit;
 				);
 				?>
 			</span>
-			<?php if ( ! empty( $last_sync['status'] ) && \DragonContentDecay\Scheduler::STATUS_COMPLETE !== $last_sync['status'] ) : ?>
+			<?php if ( ! empty( $last_sync['error'] ) ) : ?>
+				<span class="dcd-sync-warning">
+					<?php
+					printf(
+						/* translators: %s: why the analytics data could not be fetched */
+						esc_html__( 'Last sync failed, so the scores below are from the previous successful sync. %s', 'dragon-content-decay' ),
+						esc_html( $last_sync['error'] )
+					);
+					?>
+				</span>
+			<?php elseif ( ! empty( $last_sync['status'] ) && \DragonContentDecay\Scheduler::STATUS_COMPLETE !== $last_sync['status'] ) : ?>
 				<span class="dcd-sync-warning">
 					<?php
 					printf(
@@ -102,11 +120,67 @@ defined( 'ABSPATH' ) || exit;
 					?>
 				</span>
 			<?php endif; ?>
+			<?php if ( empty( $last_sync['error'] ) && ! empty( $last_sync['search_error'] ) && get_option( 'dragoncontentdecay_gsc_enabled', 0 ) ) : ?>
+				<span class="dcd-sync-warning">
+					<?php
+					printf(
+						/* translators: %s: why the Search Console data could not be fetched */
+						esc_html__( 'Search Console data could not be fetched in the last sync, so the search columns below still show the previous values. %s', 'dragon-content-decay' ),
+						esc_html( $last_sync['search_error'] )
+					);
+					?>
+				</span>
+			<?php endif; ?>
 			<button type="button" class="button dcd-sync-button" id="dcd-manual-sync">
 				<span class="dashicons dashicons-update"></span>
 				<?php esc_html_e( 'Sync Now', 'dragon-content-decay' ); ?>
 			</button>
 		</div>
+
+		<?php if ( $focus_post_id ) : ?>
+			<div class="dragon-card dcd-focus-post" style="margin:12px 0;">
+				<?php if ( $focus_post ) : ?>
+					<h2 style="margin-top:0;">
+						<?php
+						printf(
+							/* translators: %s: post title */
+							esc_html__( 'Analytics for "%s"', 'dragon-content-decay' ),
+							esc_html( get_the_title( $focus_post_id ) )
+						);
+						?>
+					</h2>
+					<p>
+						<span class="dcd-score dcd-<?php echo esc_attr( $focus_post['trend'] ); ?>">
+							<?php
+							/* translators: %s: Decay score percentage */
+							echo esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $focus_post['decay_score'], 1 ) ) );
+							?>
+						</span>
+						&middot;
+						<?php echo esc_html( $trend_labels[ $focus_post['trend'] ] ?? '' ); ?>
+						&middot;
+						<?php
+						printf(
+							/* translators: 1: Current views, 2: Previous views */
+							esc_html( _n( '%1$s view this period (previous period: %2$s)', '%1$s views this period (previous period: %2$s)', absint( $focus_post['pageviews_current'] ), 'dragon-content-decay' ) ),
+							esc_html( number_format_i18n( absint( $focus_post['pageviews_current'] ) ) ),
+							esc_html( number_format_i18n( absint( $focus_post['pageviews_previous'] ) ) )
+						);
+						?>
+					</p>
+				<?php else : ?>
+					<p style="margin:0;">
+						<?php
+						printf(
+							/* translators: %s: post title */
+							esc_html__( 'No analytics data yet for "%s". It appears here after a sync once Google Analytics has recorded views for it.', 'dragon-content-decay' ),
+							esc_html( get_the_title( $focus_post_id ) )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
 
 		<!-- Posts Table -->
 		<div class="dcd-table-container">
@@ -207,6 +281,18 @@ defined( 'ABSPATH' ) || exit;
 					<?php endif; ?>
 				</tbody>
 			</table>
+			<?php if ( count( $posts_data ) < (int) ( $summary['total'] ?? 0 ) ) : ?>
+				<p class="description">
+					<?php
+					printf(
+						/* translators: 1: number of posts listed, 2: number of posts tracked */
+						esc_html( _n( 'Showing the %1$s lowest-scoring post of %2$s tracked.', 'Showing the %1$s lowest-scoring posts of %2$s tracked.', count( $posts_data ), 'dragon-content-decay' ) ),
+						esc_html( number_format_i18n( count( $posts_data ) ) ),
+						esc_html( number_format_i18n( (int) $summary['total'] ) )
+					);
+					?>
+				</p>
+			<?php endif; ?>
 		</div>
 	<?php endif; ?>
 </div>
