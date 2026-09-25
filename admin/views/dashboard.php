@@ -156,6 +156,11 @@ defined( 'ABSPATH' ) || exit;
 							echo esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $focus_post['decay_score'], 1 ) ) );
 							?>
 						</span>
+						<?php if ( ! empty( $focus_post['uncertain'] ) ) : ?>
+							<span class="dragon-pill dragon-pill--warning" title="<?php esc_attr_e( 'Google Analytics returned only the busiest pages for this period, and some of this post\'s addresses were not among them, so its views may be higher than shown.', 'dragon-content-decay' ); ?>">
+								<?php esc_html_e( 'Partial data', 'dragon-content-decay' ); ?>
+							</span>
+						<?php endif; ?>
 						&middot;
 						<?php echo esc_html( $trend_labels[ $focus_post['trend'] ] ?? '' ); ?>
 						&middot;
@@ -237,6 +242,11 @@ defined( 'ABSPATH' ) || exit;
 										echo esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $dragoncontentdecay_post['decay_score'], 1 ) ) );
 										?>
 									</span>
+									<?php if ( ! empty( $dragoncontentdecay_post['uncertain'] ) ) : ?>
+										<span class="dragon-pill dragon-pill--warning" title="<?php esc_attr_e( 'Google Analytics returned only the busiest pages for this period, and some of this post\'s addresses were not among them, so its views may be higher than shown.', 'dragon-content-decay' ); ?>">
+											<?php esc_html_e( 'Partial data', 'dragon-content-decay' ); ?>
+										</span>
+									<?php endif; ?>
 								</td>
 								<td class="column-views">
 									<?php echo esc_html( number_format_i18n( (int) $dragoncontentdecay_post['pageviews_current'] ) ); ?>

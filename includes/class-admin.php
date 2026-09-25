@@ -431,31 +431,21 @@ class Admin {
 			return;
 		}
 
-		global $wpdb;
-		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$score = $this->analyzer->get_post_decay( $post_id );
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
-		$score = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT decay_score, trend FROM {$table_scores} WHERE post_id = %d",
-				$post_id
-			)
-		);
-		// phpcs:enable
-
-		if ( ! $score ) {
+		if ( null === $score ) {
 			echo '<span class="dcd-no-data">—</span>';
 			return;
 		}
 
 		// Same rule (and threshold setting) as the dashboard.
-		$class = 'dcd-' . $this->analyzer->determine_trend( (float) $score->decay_score );
+		$class = 'dcd-' . $score['trend'];
 
 		printf(
 			'<span class="dcd-score %s">%s</span>',
 			esc_attr( $class ),
 			/* translators: %s: Decay score percentage */
-			esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $score->decay_score, 1 ) ) )
+			esc_html( sprintf( __( '%s%%', 'dragon-content-decay' ), number_format_i18n( (float) $score['decay_score'], 1 ) ) )
 		);
 	}
 

@@ -151,7 +151,7 @@ final class AnalyzerAggregationTest extends TestCase {
 		$this->assertSame( 10, $GLOBALS['wpdb']->rows[6]['pageviews_current'] );
 	}
 
-	public function test_a_post_with_any_path_missing_from_a_truncated_period_is_not_scored(): void {
+	public function test_a_post_whose_missing_path_could_matter_is_scored_and_marked_uncertain(): void {
 		$result = self::score(
 			array( '/my-post' => 400 ),
 			array(
@@ -168,8 +168,56 @@ final class AnalyzerAggregationTest extends TestCase {
 			)
 		);
 
-		$this->assertSame( 0, $result['analyzed'] );
-		$this->assertSame( array(), $GLOBALS['wpdb']->replaced );
+		// The current report stops at 400 views, so the missing alias may
+		// have had up to 400: scored on what was read, flagged as partial.
+		$this->assertSame( 1, $result['analyzed'] );
+		$this->assertSame( 400, $GLOBALS['wpdb']->rows[1]['pageviews_current'] );
+		$this->assertSame( 1050, $GLOBALS['wpdb']->rows[1]['pageviews_previous'] );
+		$this->assertSame( array( 1 ), get_option( Analyzer::UNCERTAIN_OPTION ) );
+	}
+
+	public function test_a_low_traffic_alias_below_the_cutoff_does_not_make_a_post_uncertain(): void {
+		$result = self::score(
+			array(
+				'/my-post'  => 400,
+				'/tail-end' => 2,
+			),
+			array(
+				'/my-post'          => 1000,
+				'/category/my-post' => 50,
+			),
+			array( '/category/my-post' => 1 ),
+			array( 'my-post' => 1 ),
+			array(
+				'truncated' => array(
+					'current'  => true,
+					'previous' => false,
+				),
+			)
+		);
+
+		$this->assertSame( 1, $result['analyzed'] );
+		$this->assertSame( -61.9, $GLOBALS['wpdb']->rows[1]['decay_score'] );
+		$this->assertFalse( get_option( Analyzer::UNCERTAIN_OPTION ) );
+	}
+
+	public function test_a_later_complete_read_clears_the_uncertain_mark(): void {
+		update_option( Analyzer::UNCERTAIN_OPTION, array( 1 ) );
+
+		self::score( array( '/my-post' => 400 ), array( '/my-post' => 1000 ), array(), array( 'my-post' => 1 ) );
+
+		$this->assertFalse( get_option( Analyzer::UNCERTAIN_OPTION ) );
+	}
+
+	public function test_a_complete_pass_prunes_rows_of_untracked_types(): void {
+		update_option( 'dragoncontentdecay_post_types', array( 'post', 'page' ) );
+
+		self::score( array( '/my-post' => 400 ), array( '/my-post' => 1000 ), array(), array( 'my-post' => 1 ) );
+
+		$deletes = array_values( preg_grep( '/^\s*DELETE/', $GLOBALS['wpdb']->queries ) );
+		$this->assertCount( 1, $deletes );
+		$this->assertStringContainsString( 'wp_dcd_scores', $deletes[0] );
+		$this->assertStringContainsString( 'p.post_type NOT IN', $deletes[0] );
 	}
 
 	public function test_search_metrics_are_summed_across_the_posts_paths(): void {
@@ -263,6 +311,7 @@ final class AnalyzerAggregationTest extends TestCase {
 		$this->assertSame( 0, $first['analyzed'] );
 		$this->assertSame( array(), $GLOBALS['wpdb']->replaced, 'a half-resolved post is not scored' );
 		$this->assertTrue( $first['cursor_saved'] );
+		$this->assertSame( array(), preg_grep( '/^\s*DELETE/', $GLOBALS['wpdb']->queries ), 'an unfinished pass prunes nothing' );
 
 		$second = AnalyzerTestSupport::analyzer( $comparison, $resolve )->analyze_all();
 

@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-09-25T07:28:05+00:00\n"
+"POT-Creation-Date: 2026-09-25T08:34:45+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: dragon-content-decay\n"
@@ -128,107 +128,117 @@ msgstr ""
 
 #. translators: %s: Decay score percentage
 #: admin/views/dashboard.php:156
-#: admin/views/dashboard.php:237
-#: includes/class-admin.php:458
+#: admin/views/dashboard.php:242
+#: includes/class-admin.php:448
 #: includes/class-notifications.php:349
 msgid "%s%%"
 msgstr ""
 
+#: admin/views/dashboard.php:160
+#: admin/views/dashboard.php:246
+msgid "Google Analytics returned only the busiest pages for this period, and some of this post's addresses were not among them, so its views may be higher than shown."
+msgstr ""
+
+#: admin/views/dashboard.php:161
+#: admin/views/dashboard.php:247
+msgid "Partial data"
+msgstr ""
+
 #. translators: 1: Current views, 2: Previous views
-#: admin/views/dashboard.php:165
+#: admin/views/dashboard.php:170
 msgid "%1$s view this period (previous period: %2$s)"
 msgid_plural "%1$s views this period (previous period: %2$s)"
 msgstr[0] ""
 msgstr[1] ""
 
 #. translators: %s: post title
-#: admin/views/dashboard.php:176
+#: admin/views/dashboard.php:181
 msgid "No analytics data yet for \"%s\". It appears here after a sync once Google Analytics has recorded views for it."
 msgstr ""
 
-#: admin/views/dashboard.php:188
+#: admin/views/dashboard.php:193
 msgid "Content Performance"
 msgstr ""
 
-#: admin/views/dashboard.php:190
+#: admin/views/dashboard.php:195
 msgid "Filter by trend"
 msgstr ""
 
-#: admin/views/dashboard.php:192
+#: admin/views/dashboard.php:197
 msgid "All Trends"
 msgstr ""
 
-#: admin/views/dashboard.php:193
+#: admin/views/dashboard.php:198
 #: includes/class-admin.php:207
 #: includes/class-notifications.php:327
 msgid "Decaying"
 msgstr ""
 
-#: admin/views/dashboard.php:194
+#: admin/views/dashboard.php:199
 #: includes/class-admin.php:208
 #: includes/class-notifications.php:331
 msgid "Stable"
 msgstr ""
 
-#: admin/views/dashboard.php:195
+#: admin/views/dashboard.php:200
 #: includes/class-admin.php:209
 #: includes/class-notifications.php:335
 msgid "Growing"
 msgstr ""
 
-#: admin/views/dashboard.php:204
+#: admin/views/dashboard.php:209
 msgid "Post Title"
 msgstr ""
 
-#: admin/views/dashboard.php:205
+#: admin/views/dashboard.php:210
 msgid "Decay Score"
 msgstr ""
 
-#: admin/views/dashboard.php:206
+#: admin/views/dashboard.php:211
 msgid "Current Views"
 msgstr ""
 
-#: admin/views/dashboard.php:207
+#: admin/views/dashboard.php:212
 msgid "Previous Views"
 msgstr ""
 
-#: admin/views/dashboard.php:209
+#: admin/views/dashboard.php:214
 msgid "Search Clicks"
 msgstr ""
 
-#: admin/views/dashboard.php:211
+#: admin/views/dashboard.php:216
 msgid "Trend"
 msgstr ""
 
-#: admin/views/dashboard.php:212
+#: admin/views/dashboard.php:217
 msgid "Last Updated"
 msgstr ""
 
-#: admin/views/dashboard.php:213
+#: admin/views/dashboard.php:218
 msgid "Actions"
 msgstr ""
 
-#: admin/views/dashboard.php:220
+#: admin/views/dashboard.php:225
 msgid "No data available. Click \"Sync Now\" to fetch analytics data."
 msgstr ""
 
 #. translators: %s: Increase in search clicks versus the previous period
-#: admin/views/dashboard.php:257
+#: admin/views/dashboard.php:267
 msgid "(+%s)"
 msgstr ""
 
 #. translators: %s: Decrease in search clicks versus the previous period, without the minus sign
-#: admin/views/dashboard.php:259
+#: admin/views/dashboard.php:269
 msgid "(-%s)"
 msgstr ""
 
-#: admin/views/dashboard.php:276
+#: admin/views/dashboard.php:286
 #: includes/class-notifications.php:362
 msgid "Edit"
 msgstr ""
 
 #. translators: 1: number of posts listed, 2: number of posts tracked
-#: admin/views/dashboard.php:289
+#: admin/views/dashboard.php:299
 msgid "Showing the %1$s lowest-scoring post of %2$s tracked."
 msgid_plural "Showing the %1$s lowest-scoring posts of %2$s tracked."
 msgstr[0] ""
@@ -512,7 +522,7 @@ msgstr ""
 msgid "Decay"
 msgstr ""
 
-#: includes/class-admin.php:518
+#: includes/class-admin.php:508
 msgid "View Analytics"
 msgstr ""
 
@@ -645,35 +655,35 @@ msgstr ""
 msgid "Permission denied."
 msgstr ""
 
-#: includes/class-scheduler.php:83
+#: includes/class-scheduler.php:99
 msgid "A sync is already running. Please try again in a moment."
 msgstr ""
 
 #. translators: %s: why the analytics data could not be fetched
-#: includes/class-scheduler.php:92
+#: includes/class-scheduler.php:109
 msgid "Sync failed, so no scores were changed. %s"
 msgstr ""
 
-#: includes/class-scheduler.php:103
+#: includes/class-scheduler.php:121
 msgid "Part of the analytics data was matched to posts. Scores are updated once every page is matched; the sync carries on automatically in a few minutes."
 msgstr ""
 
 #. translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved
-#: includes/class-scheduler.php:115
+#: includes/class-scheduler.php:135
 msgid "Sync finished with errors. Posts analyzed: %1$s. Scores not saved: %2$s. Check the database and try again."
 msgstr ""
 
 #. translators: %s: Number of posts analyzed
-#: includes/class-scheduler.php:130
+#: includes/class-scheduler.php:151
 msgid "Sync complete. Analyzed %s post."
 msgid_plural "Sync complete. Analyzed %s posts."
 msgstr[0] ""
 msgstr[1] ""
 
-#: includes/class-scheduler.php:350
+#: includes/class-scheduler.php:386
 msgid "Never"
 msgstr ""
 
-#: includes/class-scheduler.php:368
+#: includes/class-scheduler.php:404
 msgid "Not scheduled"
 msgstr ""

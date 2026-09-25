@@ -107,6 +107,54 @@ final class DashboardConsistencyTest extends TestCase {
 		$this->assertSame( 'decaying', $rows[0]['trend'] );
 	}
 
+	public function test_every_reader_lists_only_tracked_post_types(): void {
+		update_option( 'dragoncontentdecay_post_types', array( 'post', 'page' ) );
+		$GLOBALS['wpdb'] = $this->wpdb( array() );
+		$analyzer        = AnalyzerTestSupport::analyzer();
+
+		$analyzer->get_dashboard_rows( 100 );
+		$analyzer->get_decaying_posts( 10 );
+		$analyzer->get_posts_by_trend( Analyzer::TREND_STABLE );
+		$analyzer->get_summary();
+
+		$this->assertCount( 7, $GLOBALS['wpdb']->queries );
+		foreach ( $GLOBALS['wpdb']->queries as $query ) {
+			$this->assertStringContainsString( 'p.post_type IN (post, page)', $query );
+		}
+	}
+
+	public function test_single_post_reads_and_the_list_column_only_show_tracked_types(): void {
+		update_option( 'dragoncontentdecay_post_types', array( 'post' ) );
+		$GLOBALS['wpdb'] = $this->wpdb( array( $this->row( -30.0, 'decaying' ) ) );
+
+		AnalyzerTestSupport::analyzer()->get_post_decay( 7 );
+		ob_start();
+		$this->admin()->render_decay_column( 'dragoncontentdecay_decay', 7 );
+		ob_end_clean();
+
+		$this->assertCount( 2, $GLOBALS['wpdb']->queries );
+		foreach ( $GLOBALS['wpdb']->queries as $query ) {
+			$this->assertStringContainsString( 'p.post_type IN (post)', $query );
+		}
+	}
+
+	public function test_the_focused_post_carries_the_uncertain_mark(): void {
+		update_option( Analyzer::UNCERTAIN_OPTION, array( 7 ) );
+		$GLOBALS['wpdb'] = $this->wpdb( array( $this->row( -30.0, 'decaying' ) ) );
+
+		$this->assertTrue( $this->admin()->get_focus_post( 7 )['uncertain'] );
+	}
+
+	public function test_dashboard_rows_carry_the_uncertain_mark(): void {
+		update_option( Analyzer::UNCERTAIN_OPTION, array( 7 ) );
+		$GLOBALS['wpdb'] = $this->wpdb( array( $this->row( -30.0, 'decaying' ), array( 'post_id' => 8 ) + $this->row( 5.0, 'stable' ) ) );
+
+		$rows = AnalyzerTestSupport::analyzer()->get_dashboard_rows( 100 );
+
+		$this->assertTrue( $rows[0]['uncertain'] );
+		$this->assertFalse( $rows[1]['uncertain'] );
+	}
+
 	private function admin(): Admin {
 		return new Admin( AnalyzerTestSupport::oauth(), AnalyzerTestSupport::analyzer() );
 	}

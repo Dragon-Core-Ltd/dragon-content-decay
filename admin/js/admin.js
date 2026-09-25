@@ -31,7 +31,12 @@
                 nonce: dcdAdmin.nonce
             },
             success: function(response) {
-                if (response.success) {
+                if (response.success && response.data && response.data.pending) {
+                    // Paths are still being matched; no score changed yet.
+                    alert(response.data.message);
+                    $button.prop('disabled', false).removeClass('syncing');
+                    $button.html(originalText);
+                } else if (response.success) {
                     // Show success message
                     setLabel($button, 'dashicons-yes', dcdAdmin.i18n.synced);
 

@@ -5,7 +5,7 @@ Connects to Google Analytics 4 and finds the posts losing traffic - so you refre
 ## Getting started
 1. **Tools → Content Decay → Settings → Connect Google Analytics.** The plugin requests read-only Analytics access.
 2. Enter this site's **GA4 Property ID** (the number shown under **Admin → Property Settings** in Google Analytics) and save.
-3. The first scan compares each post's page views over the chosen period (full days, ending yesterday in your site's timezone) with the period of equal length before it, and classifies each post as **Decaying**, **Stable**, or **Growing**. Only the post types chosen under **Post Types to Track** are scored.
+3. The first scan compares each post's page views over the chosen period (full days, ending yesterday in your site's timezone) with the period of equal length before it, and classifies each post as **Decaying**, **Stable**, or **Growing**. Only the post types chosen under **Post Types to Track** are scored. On a very large property Google Analytics returns only the busiest pages for a period; when some of a post's addresses were left out and could have changed its score, the post is still scored and its row shows **Partial data**.
 
 A post's page views are the sum over every address Google Analytics reports for it, such as a different letter case or an old category path. Feed, embed, AMP, comment-page and paged addresses of a post are left out. On a site installed in a subfolder (for example `example.com/blog`), the subfolder is matched automatically.
 

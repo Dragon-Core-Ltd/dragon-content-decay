@@ -74,18 +74,35 @@ class Scheduler {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'dragon-content-decay' ) ) );
 		}
 
-		$result = $this->sync();
+		$reply = $this->manual_sync_reply( $this->sync() );
 
+		if ( $reply['success'] ) {
+			wp_send_json_success( $reply['data'] );
+		}
+		wp_send_json_error( $reply['data'] );
+	}
+
+	/**
+	 * The AJAX reply for a manual sync outcome. 'pending' is true when the
+	 * run ran out of time before every path was matched, so no score changed
+	 * yet and the page should not reload as if the sync had completed.
+	 *
+	 * @param array $result Outcome from sync().
+	 * @return array{success:bool,data:array}
+	 */
+	public function manual_sync_reply( array $result ): array {
 		// A sync was already running (daily cron or another manual sync); don't
 		// report a misleading "Sync complete. Analyzed 0 posts."
 		if ( ! empty( $result['skipped'] ) ) {
-			wp_send_json_error(
+			return self::reply(
+				false,
 				array( 'message' => __( 'A sync is already running. Please try again in a moment.', 'dragon-content-decay' ) )
 			);
 		}
 
 		if ( ! empty( $result['error'] ) ) {
-			wp_send_json_error(
+			return self::reply(
+				false,
 				array(
 					'message' => sprintf(
 						/* translators: %s: why the analytics data could not be fetched */
@@ -98,17 +115,20 @@ class Scheduler {
 		}
 
 		if ( ! empty( $result['pending'] ) ) {
-			wp_send_json_success(
+			return self::reply(
+				true,
 				array(
 					'message'  => __( 'Part of the analytics data was matched to posts. Scores are updated once every page is matched; the sync carries on automatically in a few minutes.', 'dragon-content-decay' ),
 					'analyzed' => 0,
 					'synced'   => 0,
+					'pending'  => true,
 				)
 			);
 		}
 
 		if ( self::STATUS_COMPLETE !== $result['status'] ) {
-			wp_send_json_error(
+			return self::reply(
+				false,
 				array(
 					'message'  => sprintf(
 						/* translators: 1: number of posts analyzed, 2: number of posts whose score could not be saved */
@@ -123,7 +143,8 @@ class Scheduler {
 			);
 		}
 
-		wp_send_json_success(
+		return self::reply(
+			true,
 			array(
 				'message'  => sprintf(
 					/* translators: %s: Number of posts analyzed */
@@ -132,7 +153,22 @@ class Scheduler {
 				),
 				'analyzed' => $result['analyzed'],
 				'synced'   => $result['synced'],
+				'pending'  => false,
 			)
+		);
+	}
+
+	/**
+	 * Build a manual sync reply.
+	 *
+	 * @param bool  $success Whether the reply is a success.
+	 * @param array $data    Reply data.
+	 * @return array{success:bool,data:array}
+	 */
+	private static function reply( bool $success, array $data ): array {
+		return array(
+			'success' => $success,
+			'data'    => $data,
 		);
 	}
 

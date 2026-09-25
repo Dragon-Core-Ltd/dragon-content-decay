@@ -237,9 +237,9 @@ final class GscPagingTest extends TestCase {
 
 		$this->assertSame( 2, $run->result['analyzed'] );
 		$this->assertSame( array( 2 ), $run->db->replaced, 'a path in both periods is written in full' );
-		$this->assertCount( 1, $run->db->queries );
-		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE', $run->db->queries[0] );
-		$update = substr( $run->db->queries[0], strpos( $run->db->queries[0], 'ON DUPLICATE KEY UPDATE' ) );
+		$this->assertCount( 1, self::writes( $run->db->queries ) );
+		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE', self::writes( $run->db->queries )[0] );
+		$update = substr( self::writes( $run->db->queries )[0], strpos( self::writes( $run->db->queries )[0], 'ON DUPLICATE KEY UPDATE' ) );
 		$this->assertStringNotContainsString( 'search_', $update, '/alpha keeps its stored search values' );
 	}
 
@@ -265,6 +265,16 @@ final class GscPagingTest extends TestCase {
 		);
 
 		$this->assertSame( array( 1, 2 ), $run->db->replaced );
-		$this->assertSame( array(), $run->db->queries );
+		$this->assertSame( array(), self::writes( $run->db->queries ) );
+	}
+
+	/**
+	 * Queries other than the end-of-pass prune of untracked rows.
+	 *
+	 * @param string[] $queries Recorded queries.
+	 * @return string[]
+	 */
+	private static function writes( array $queries ): array {
+		return array_values( preg_grep( '/^\s*DELETE/', $queries, PREG_GREP_INVERT ) );
 	}
 }

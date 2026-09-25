@@ -86,7 +86,7 @@ final class Ga4PagingTest extends TestCase {
 		$this->assertTrue( $report['truncated'], 'fewer rows than rowCount reported is an incomplete report' );
 	}
 
-	public function test_a_path_absent_only_from_a_truncated_period_is_not_scored(): void {
+	public function test_a_path_absent_only_from_a_truncated_period_is_scored_and_marked_uncertain(): void {
 		$GLOBALS['wpdb'] = AnalyzerTestSupport::wpdb(
 			array(),
 			array(
@@ -115,9 +115,10 @@ final class Ga4PagingTest extends TestCase {
 		)->analyze_all();
 
 		// /cut/ has no previous-period row only because that report was cut
-		// short, so it would read as +100%. /fresh/ is missing from the
-		// complete current report, so it really had no views.
-		$this->assertSame( array( 1, 3 ), $GLOBALS['wpdb']->replaced );
-		$this->assertSame( 2, $result['analyzed'] );
+		// short at 40 views, so its +100% is marked uncertain. /fresh/ is
+		// missing from the complete current report, so it really had no views.
+		$this->assertSame( array( 1, 2, 3 ), $GLOBALS['wpdb']->replaced );
+		$this->assertSame( 3, $result['analyzed'] );
+		$this->assertSame( array( 2 ), get_option( \DragonContentDecay\Analyzer::UNCERTAIN_OPTION ) );
 	}
 }

@@ -154,7 +154,7 @@ final class SearchConsoleFailureTest extends TestCase {
 		$this->assertSame( 1, $result['analyzed'], 'the GA4 score is still written' );
 		$this->assertSame( array(), $GLOBALS['wpdb']->replaced, 'a full-row replace would zero the search columns' );
 
-		$queries = $GLOBALS['wpdb']->queries;
+		$queries = self::writes( $GLOBALS['wpdb']->queries );
 		$this->assertCount( 1, $queries );
 		$this->assertStringContainsString( 'ON DUPLICATE KEY UPDATE', $queries[0] );
 		$update = substr( $queries[0], strpos( $queries[0], 'ON DUPLICATE KEY UPDATE' ) );
@@ -227,5 +227,15 @@ final class SearchConsoleFailureTest extends TestCase {
 		)->sync();
 
 		$this->assertFalse( get_option( 'dragoncontentdecay_last_search_error' ) );
+	}
+
+	/**
+	 * Queries other than the end-of-pass prune of untracked rows.
+	 *
+	 * @param string[] $queries Recorded queries.
+	 * @return string[]
+	 */
+	private static function writes( array $queries ): array {
+		return array_values( preg_grep( '/^\s*DELETE/', $queries, PREG_GREP_INVERT ) );
 	}
 }

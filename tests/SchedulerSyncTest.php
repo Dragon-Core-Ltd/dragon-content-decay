@@ -64,4 +64,36 @@ final class SchedulerSyncTest extends TestCase {
 
 		$this->assertSame( 'partial', $result['status'] );
 	}
+
+	public function test_a_pending_manual_sync_is_reported_as_pending_not_complete(): void {
+		$scheduler = $this->scheduler( array() );
+
+		$reply = $scheduler->manual_sync_reply(
+			array(
+				'analyzed' => 0,
+				'failed'   => 0,
+				'synced'   => 0,
+				'status'   => 'complete',
+				'pending'  => true,
+			)
+		);
+
+		$this->assertTrue( $reply['success'] );
+		$this->assertTrue( $reply['data']['pending'] );
+		$this->assertStringContainsString( 'carries on automatically', $reply['data']['message'] );
+	}
+
+	public function test_a_finished_manual_sync_is_not_pending(): void {
+		$reply = $this->scheduler( array() )->manual_sync_reply(
+			array(
+				'analyzed' => 3,
+				'failed'   => 0,
+				'synced'   => 3,
+				'status'   => 'complete',
+			)
+		);
+
+		$this->assertTrue( $reply['success'] );
+		$this->assertFalse( $reply['data']['pending'] );
+	}
 }

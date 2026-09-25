@@ -68,6 +68,13 @@ class Analyzer {
 			);
 		}
 
+		// A truncated report is sorted by views, busiest first, so a path it
+		// left out had at most as many views as the last row it did return.
+		$cutoff = array(
+			'current'  => self::report_cutoff( (array) ( $data['current'] ?? array() ) ),
+			'previous' => self::report_cutoff( (array) ( $data['previous'] ?? array() ) ),
+		);
+
 		// Key both periods by the same normalised path the GSC map uses so the
 		// join below is exact and GA4 rows that differ only in trailing slash or
 		// encoding are counted once.
@@ -144,7 +151,10 @@ class Analyzer {
 				$posts[ $post_id ] = array(
 					'current'      => 0,
 					'previous'     => 0,
-					'uncertain'    => false,
+					'missing'      => array(
+						'current'  => 0,
+						'previous' => 0,
+					),
 					'keep_search'  => $keep_search,
 					'search_paths' => array(),
 				);
@@ -152,10 +162,11 @@ class Analyzer {
 
 			// A period whose report was too large to read in full holds only
 			// its busiest paths, so a path missing from it may still have had
-			// views: the post's total is unknown and it is not scored.
-			if ( ( $truncated['current'] && ! isset( $data['current'][ $path ] ) )
-				|| ( $truncated['previous'] && ! isset( $data['previous'][ $path ] ) ) ) {
-				$posts[ $post_id ]['uncertain'] = true;
+			// views, up to that report's cutoff.
+			foreach ( array( 'current', 'previous' ) as $period ) {
+				if ( $truncated[ $period ] && ! isset( $data[ $period ][ $path ] ) ) {
+					++$posts[ $post_id ]['missing'][ $period ];
+				}
 			}
 
 			$posts[ $post_id ]['current']  += (int) ( $data['current'][ $path ]['pageviews'] ?? 0 );
@@ -173,9 +184,10 @@ class Analyzer {
 
 		ksort( $posts );
 
+		$uncertain = array();
 		foreach ( $posts as $post_id => $post ) {
-			if ( $post['uncertain'] ) {
-				continue;
+			if ( self::is_uncertain( $post, $cutoff ) ) {
+				$uncertain[] = (int) $post_id;
 			}
 
 			$search = $post['keep_search'] ? null : $this->build_search_metrics( $post['search_paths'], $gsc );
@@ -187,12 +199,108 @@ class Analyzer {
 			}
 		}
 
+		if ( empty( $uncertain ) ) {
+			delete_option( self::UNCERTAIN_OPTION );
+		} else {
+			update_option( self::UNCERTAIN_OPTION, $uncertain, false );
+		}
+
+		$this->prune_untracked_scores();
+
 		// The resolutions are only carried over while a pass is unfinished;
 		// starting afresh picks up renamed and newly published posts.
 		delete_option( self::RESOLVED_OPTION );
 		delete_option( 'dragoncontentdecay_analyze_cursor' );
 
 		return $result;
+	}
+
+	/**
+	 * Option listing the posts last scored from a partly read report whose
+	 * missing paths could have changed the result.
+	 */
+	public const UNCERTAIN_OPTION = 'dragoncontentdecay_uncertain_posts';
+
+	/**
+	 * Share of a post's views the paths missing from a truncated report may
+	 * reach before its score is marked uncertain.
+	 */
+	private const MISSING_SHARE = 0.1;
+
+	/**
+	 * The fewest views any row of a GA4 report holds, 0 for an empty report.
+	 *
+	 * @param array<string,array> $rows Raw GA4 rows keyed by pagePath.
+	 * @return int
+	 */
+	private static function report_cutoff( array $rows ): int {
+		$cutoff = null;
+		foreach ( $rows as $row ) {
+			$views  = (int) ( is_array( $row ) ? ( $row['pageviews'] ?? 0 ) : 0 );
+			$cutoff = null === $cutoff ? $views : min( $cutoff, $views );
+		}
+
+		return (int) $cutoff;
+	}
+
+	/**
+	 * Whether the views a post's missing paths may have had could change its
+	 * score materially: more than MISSING_SHARE of its busier period.
+	 *
+	 * @param array                                $post   Aggregated post (current, previous, missing).
+	 * @param array{current:int,previous:int}      $cutoff Views cutoff of each period's report.
+	 * @return bool
+	 */
+	private static function is_uncertain( array $post, array $cutoff ): bool {
+		$known = max( (int) $post['current'], (int) $post['previous'] );
+
+		foreach ( array( 'current', 'previous' ) as $period ) {
+			$missing = (int) $post['missing'][ $period ];
+			if ( $missing > 0 && $missing * (int) $cutoff[ $period ] > $known * self::MISSING_SHARE ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Delete the score rows of posts that no longer exist or whose type is
+	 * no longer tracked. The readers filter on the tracked types as well, so
+	 * a failed delete only leaves hidden rows behind.
+	 */
+	private function prune_untracked_scores(): void {
+		global $wpdb;
+
+		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$types        = self::tracked_post_types();
+		$type_ph      = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table name built from $wpdb->prefix and a fixed list of %s placeholders; every value is prepared.
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE s FROM {$table_scores} s
+				 LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID
+				 WHERE p.ID IS NULL OR p.post_type NOT IN ( {$type_ph} )",
+				...$types
+			)
+		);
+		// phpcs:enable
+	}
+
+	/**
+	 * The tracked post types as a prepared SQL condition on posts alias p.
+	 *
+	 * @return string
+	 */
+	private static function tracked_types_condition(): string {
+		global $wpdb;
+
+		$types   = self::tracked_post_types();
+		$type_ph = implode( ', ', array_fill( 0, count( $types ), '%s' ) );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $type_ph is a fixed list of %s placeholders.
+		return $wpdb->prepare( "p.post_type IN ({$type_ph})", ...$types );
 	}
 
 	/**
@@ -692,6 +800,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$types        = self::tracked_types_condition();
 		$threshold    = self::decay_threshold();
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
@@ -702,6 +811,7 @@ class Analyzer {
                  JOIN {$wpdb->posts} p ON s.post_id = p.ID
                  WHERE s.decay_score <= %f
                  AND p.post_status = 'publish'
+                 AND {$types}
                  ORDER BY s.decay_score ASC
                  LIMIT %d",
 				$threshold,
@@ -742,6 +852,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$types        = self::tracked_types_condition();
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
 		$results = $wpdb->get_results(
@@ -750,6 +861,7 @@ class Analyzer {
                  FROM {$table_scores} s
                  JOIN {$wpdb->posts} p ON s.post_id = p.ID
                  WHERE p.post_status = 'publish'
+                 AND {$types}
                  ORDER BY s.decay_score ASC
                  LIMIT %d",
 				$limit
@@ -758,7 +870,25 @@ class Analyzer {
 		);
 		// phpcs:enable
 
-		return is_array( $results ) ? $this->with_current_trend( $results ) : array();
+		return is_array( $results ) ? $this->with_uncertain_mark( $this->with_current_trend( $results ) ) : array();
+	}
+
+	/**
+	 * Mark each row whose score was last calculated from a partly read report
+	 * (see UNCERTAIN_OPTION).
+	 *
+	 * @param array $rows Score rows with a post_id field.
+	 * @return array
+	 */
+	public function with_uncertain_mark( array $rows ): array {
+		$uncertain = array_flip( array_map( 'intval', (array) get_option( self::UNCERTAIN_OPTION, array() ) ) );
+
+		foreach ( $rows as $i => $row ) {
+			if ( is_array( $row ) ) {
+				$rows[ $i ]['uncertain'] = isset( $uncertain[ (int) ( $row['post_id'] ?? 0 ) ] );
+			}
+		}
+		return $rows;
 	}
 
 	/**
@@ -772,6 +902,7 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$types        = self::tracked_types_condition();
 		$threshold    = self::decay_threshold();
 
 		if ( self::TREND_DECAYING === $trend ) {
@@ -793,6 +924,7 @@ class Analyzer {
                  JOIN {$wpdb->posts} p ON s.post_id = p.ID
                  WHERE {$where}
                  AND p.post_status = 'publish'
+                 AND {$types}
                  ORDER BY s.decay_score {$order}
                  LIMIT %d",
 				$limit
@@ -815,7 +947,8 @@ class Analyzer {
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
 		$threshold    = self::decay_threshold();
-		$from         = "{$table_scores} s JOIN {$wpdb->posts} p ON s.post_id = p.ID WHERE p.post_status = 'publish'";
+		$types        = self::tracked_types_condition();
+		$from         = "{$table_scores} s JOIN {$wpdb->posts} p ON s.post_id = p.ID WHERE p.post_status = 'publish' AND {$types}";
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix and the core posts table, not user input; values passed through $wpdb->prepare().
 		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$from}" );
@@ -858,11 +991,15 @@ class Analyzer {
 		global $wpdb;
 
 		$table_scores = $wpdb->prefix . 'dcd_scores';
+		$types        = self::tracked_types_condition();
 
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix, not user input; values passed through $wpdb->prepare().
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Custom plugin table name built from $wpdb->prefix and a prepared post-type condition; values passed through $wpdb->prepare().
 		$result = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT * FROM {$table_scores} WHERE post_id = %d",
+				"SELECT s.* FROM {$table_scores} s
+                 JOIN {$wpdb->posts} p ON s.post_id = p.ID
+                 WHERE s.post_id = %d
+                 AND {$types}",
 				$post_id
 			),
 			ARRAY_A
@@ -873,6 +1010,6 @@ class Analyzer {
 			return null;
 		}
 
-		return $this->with_current_trend( array( $result ) )[0];
+		return $this->with_uncertain_mark( $this->with_current_trend( array( $result ) ) )[0];
 	}
 }
