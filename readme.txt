@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.0
-Stable tag: 1.0.15
+Stable tag: 1.0.16
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -136,6 +136,9 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 
 == Changelog ==
 
+= 1.0.16 =
+* Fixed: uninstall deletes data only when the opt-in is clearly on (1, true, yes or on), not for a value set to "false" or "no".
+
 = 1.0.15 =
 * A post's score adds up all its Analytics addresses, so paged and feed views no longer overwrite it.
 * Sites installed in a subfolder are matched correctly.
@@ -230,6 +233,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.16 =
+Uninstall deletes data only when the opt-in is clearly on.
 
 = 1.0.15 =
 Scores add up every address of a post, and subfolder installs work.

@@ -15,6 +15,24 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 /**
+ * Whether a stored "delete data on uninstall" value is a clear opt-in. Only
+ * true, 1 and the words true, yes and on (any case) count; anything else
+ * keeps the data.
+ *
+ * @param mixed $value Stored option value.
+ * @return bool
+ */
+function dragoncontentdecay_uninstall_opted_in( $value ): bool {
+	if ( true === $value || 1 === $value ) {
+		return true;
+	}
+	if ( ! is_string( $value ) ) {
+		return false;
+	}
+	return in_array( strtolower( trim( $value ) ), array( '1', 'true', 'yes', 'on' ), true );
+}
+
+/**
  * Remove this site's tables, options, transients and cron events, but only
  * when its owner opted in (the "Delete all data on uninstall" setting).
  * Without the opt-in everything survives so a reinstall picks up exactly
@@ -23,7 +41,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 function dragoncontentdecay_uninstall(): void {
 	global $wpdb;
 
-	if ( ! get_option( 'dragoncontentdecay_delete_data_on_uninstall' ) ) {
+	if ( ! dragoncontentdecay_uninstall_opted_in( get_option( 'dragoncontentdecay_delete_data_on_uninstall' ) ) ) {
 		return;
 	}
 
