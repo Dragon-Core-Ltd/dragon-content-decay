@@ -58,7 +58,9 @@ final class AnalyzerTestSupport {
 
 	/**
 	 * @param array<int,bool> $replace_results post_id => whether replace() succeeds.
-	 * @param array<string,int> $slugs post_name => ID rows returned by get_results().
+	 * @param array<string,int|array> $slugs post_name => ID rows returned by get_results();
+	 *                                       an array value may set 'ID', 'type' and 'parent'
+	 *                                       (a post without a parent by default).
 	 */
 	public static function wpdb( array $replace_results, array $slugs = array() ): object {
 		return new class( $replace_results, $slugs ) {
@@ -70,6 +72,11 @@ final class AnalyzerTestSupport {
 			public array $queries  = array();
 			/** @var int|false */
 			public $query_result = 1;
+			/** @var int|false|null Result of a DELETE ... post_id IN query; null for the number of rows removed. */
+			public $delete_result = null;
+			/** @var int[] Post IDs whose score rows a DELETE ... post_id IN query removed. */
+			public array $deleted = array();
+			private array $last_args = array();
 			private array $results;
 			private array $slugs;
 
@@ -79,24 +86,43 @@ final class AnalyzerTestSupport {
 			}
 
 			public function prepare( string $query, ...$args ): string {
-				unset( $args );
+				$this->last_args = 1 === count( $args ) && is_array( $args[0] ) ? $args[0] : $args;
 				return $query;
 			}
 
 			public function get_results( string $query ) {
 				unset( $query );
 				$rows = array();
-				foreach ( $this->slugs as $slug => $id ) {
+				foreach ( $this->slugs as $slug => $post ) {
+					$post   = is_array( $post ) ? $post : array( 'ID' => $post );
 					$rows[] = (object) array(
-						'ID'        => $id,
-						'post_name' => $slug,
+						'ID'          => $post['ID'],
+						'post_name'   => $slug,
+						'post_type'   => $post['type'] ?? 'post',
+						'post_parent' => $post['parent'] ?? 0,
 					);
 				}
 				return $rows;
 			}
 
+			// The post IDs of the stored score rows. A read, so not recorded in $queries.
+			public function get_col( string $query ) {
+				unset( $query );
+				return array_map( 'strval', array_keys( $this->rows ) );
+			}
+
 			public function query( string $query ) {
 				$this->queries[] = $query;
+				if ( str_contains( $query, "DELETE FROM {$this->prefix}dcd_scores WHERE post_id IN" ) ) {
+					if ( false === $this->delete_result ) {
+						return false;
+					}
+					foreach ( $this->last_args as $id ) {
+						unset( $this->rows[ (int) $id ] );
+						$this->deleted[] = (int) $id;
+					}
+					return count( $this->last_args );
+				}
 				return $this->query_result;
 			}
 

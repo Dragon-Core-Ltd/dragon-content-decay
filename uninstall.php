@@ -55,10 +55,16 @@ function dragoncontentdecay_uninstall(): void {
 		$wpdb->query( "DROP TABLE IF EXISTS {$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 	}
 
-	// Delete all plugin options: the current namespace-derived prefix and the
-	// pre-1.0.1 dcd_ prefix (covers installs removed before the migration ran,
-	// and the stored Google OAuth tokens under either prefix).
-	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'dragoncontentdecay\_%' OR option_name LIKE 'dcd\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	// Delete all plugin options under the current namespace-derived prefix.
+	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'dragoncontentdecay\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+
+	// The options pre-1.0.1 releases stored under dcd_ (an install removed
+	// before the migration ran), by name: the short prefix is not unique to
+	// this plugin.
+	$dragoncontentdecay_legacy = array( 'db_version', 'comparison_period', 'decay_threshold', 'email_frequency', 'ga4_property_id', 'google_client_id', 'google_client_secret', 'google_tokens', 'last_sync', 'last_sync_count', 'post_types' );
+	foreach ( $dragoncontentdecay_legacy as $dragoncontentdecay_name ) {
+		delete_option( 'dcd_' . $dragoncontentdecay_name );
+	}
 
 	// Clear scheduled cron events (current and pre-1.0.1 hook names).
 	foreach ( array( 'daily_sync', 'weekly_digest', 'monthly_digest' ) as $dragoncontentdecay_hook ) {
@@ -66,9 +72,9 @@ function dragoncontentdecay_uninstall(): void {
 		wp_clear_scheduled_hook( 'dcd_' . $dragoncontentdecay_hook );
 	}
 
-	// Delete any transients (both prefixes).
-	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%\_transient\_dragoncontentdecay\_%' OR option_name LIKE '%\_transient\_dcd\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
-	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%\_transient\_timeout\_dragoncontentdecay\_%' OR option_name LIKE '%\_transient\_timeout\_dcd\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	// Delete any transients.
+	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%\_transient\_dragoncontentdecay\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '%\_transient\_timeout\_dragoncontentdecay\_%'" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 }
 
 // Every site of a network keeps its own tables, options and schedule.

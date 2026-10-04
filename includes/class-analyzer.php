@@ -93,7 +93,15 @@ class Analyzer {
 			'cursor_saved' => true,
 		);
 
+		// Both reports were read in full, so a post missing from them had no
+		// views in either period and its stored score no longer describes it.
+		$complete = ! $truncated['current'] && ! $truncated['previous'];
+
 		if ( empty( $data['current'] ) && empty( $data['previous'] ) ) {
+			if ( $complete ) {
+				$result['failed'] += $this->remove_unscored_rows( array() );
+				delete_option( self::UNCERTAIN_OPTION );
+			}
 			return $result;
 		}
 
@@ -210,6 +218,10 @@ class Analyzer {
 
 		$this->prune_untracked_scores();
 
+		if ( $complete ) {
+			$result['failed'] += $this->remove_unscored_rows( array_map( 'intval', array_keys( $posts ) ) );
+		}
+
 		// The resolutions are only carried over while a pass is unfinished;
 		// starting afresh picks up renamed and newly published posts.
 		delete_option( self::RESOLVED_OPTION );
@@ -289,6 +301,45 @@ class Analyzer {
 			)
 		);
 		// phpcs:enable
+	}
+
+	/**
+	 * Delete the score rows of posts that were not scored in this pass. Called
+	 * only when both reports were read in full: such a post then had no views
+	 * in either period, and a row kept from an earlier pass would go on
+	 * showing a decline that is over.
+	 *
+	 * @param array<int,int> $scored IDs of the posts scored (or attempted) in this pass.
+	 * @return int Rows that could not be deleted.
+	 */
+	private function remove_unscored_rows( array $scored ): int {
+		global $wpdb;
+
+		$table_scores = $wpdb->prefix . 'dcd_scores';
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Reading a plugin-owned custom table; the table name is the site prefix plus a fixed basename.
+		$stored = (array) $wpdb->get_col( "SELECT post_id FROM {$table_scores}" );
+		$stale  = array_values( array_diff( array_map( 'intval', $stored ), $scored ) );
+		$kept   = 0;
+
+		foreach ( array_chunk( $stale, 500 ) as $chunk ) {
+			$id_ph = implode( ', ', array_fill( 0, count( $chunk ), '%d' ) );
+
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Plugin table name built from $wpdb->prefix and a fixed list of %d placeholders; every value is prepared.
+			$deleted = $wpdb->query(
+				$wpdb->prepare(
+					"DELETE FROM {$table_scores} WHERE post_id IN ( {$id_ph} )",
+					...$chunk
+				)
+			);
+			// phpcs:enable
+
+			if ( false === $deleted ) {
+				$kept += count( $chunk );
+			}
+		}
+
+		return $kept;
 	}
 
 	/**
@@ -534,11 +585,21 @@ class Analyzer {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $slug_ph/$type_ph are fixed lists of %s placeholders and $wpdb->posts is the core table name; all values are prepared.
-					"SELECT ID, post_name FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_name IN ( {$slug_ph} ) AND post_type IN ( {$type_ph} )",
+					"SELECT ID, post_name, post_type, post_parent FROM {$wpdb->posts} WHERE post_status = 'publish' AND post_name IN ( {$slug_ph} ) AND post_type IN ( {$type_ph} )",
 					array_merge( $chunk, $types )
 				)
 			);
+			$postname_only = '/%postname%' === rtrim( (string) get_option( 'permalink_structure', '' ), '/' );
 			foreach ( (array) $rows as $row ) {
+				// Only posts whose slug alone is their address below the home URL
+				// can answer a one-segment path: a top-level page, or a post when
+				// the permalink structure is /%postname%/. Any other post lives
+				// at a longer address and is left to the precise resolver.
+				$top_level_page = 'page' === $row->post_type && 0 === (int) $row->post_parent;
+				if ( ! $top_level_page && ! ( 'post' === $row->post_type && $postname_only ) ) {
+					continue;
+				}
+
 				/*
 				 * Keyed through path_key() so the map and the path being looked up
 				 * are spelled identically. WordPress builds post_name with
@@ -568,9 +629,9 @@ class Analyzer {
 		}
 		$trimmed = trim( $relative, '/' );
 
-		// Fast path only for a single-segment path (/slug/): there the slug is the
-		// whole path, so a unique match is identical to what the precise resolver
-		// would return. Multi-segment paths (/category/slug/) depend on hierarchy
+		// Fast path only for a single-segment path (/slug/): the map holds only
+		// posts whose slug is their whole address, so a unique match is what the
+		// precise resolver would return. Multi-segment paths (/category/slug/) depend on hierarchy
 		// or rewrite rules, so always resolve those precisely to avoid mis-
 		// attributing views to a same-slug post under a different path.
 		if ( '' !== $trimmed && ! str_contains( $trimmed, '/' ) ) {
@@ -609,7 +670,7 @@ class Analyzer {
 		$table_scores = $wpdb->prefix . 'dcd_scores';
 
 		if ( $keep_search ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Writing to a plugin-owned custom table; no core API or cache applies.
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Writing to a plugin-owned custom table; no core API or cache applies. The table name is the site prefix plus a fixed basename.
 			$written = $wpdb->query(
 				$wpdb->prepare(
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- The table name is the site prefix plus a fixed basename (%i needs WordPress 6.2; the plugin supports 6.0).
@@ -815,7 +876,7 @@ class Analyzer {
                  WHERE s.decay_score <= %f
                  AND p.post_status = 'publish'
                  AND {$types}
-                 ORDER BY s.decay_score ASC
+                 ORDER BY s.decay_score ASC, s.pageviews_previous DESC
                  LIMIT %d",
 				$threshold,
 				$limit
@@ -865,7 +926,7 @@ class Analyzer {
                  JOIN {$wpdb->posts} p ON s.post_id = p.ID
                  WHERE p.post_status = 'publish'
                  AND {$types}
-                 ORDER BY s.decay_score ASC
+                 ORDER BY s.decay_score ASC, s.pageviews_previous DESC
                  LIMIT %d",
 				$limit
 			),

@@ -157,6 +157,13 @@ defined( 'ABSPATH' ) || exit;
 										</option>
 									<?php endforeach; ?>
 								</select>
+							<?php elseif ( $settings['is_connected'] && $settings['gsc_scope_granted'] && '' !== $settings['gsc_sites_error'] ) : ?>
+								<p class="description dcd-status-disconnected">
+									<span class="dashicons dashicons-warning"></span>
+									<?php esc_html_e( 'Search Console properties could not be listed.', 'dragon-content-decay' ); ?>
+									<?php echo esc_html( $settings['gsc_sites_error'] ); ?>
+								</p>
+								<input type="hidden" name="dragoncontentdecay_gsc_property" value="<?php echo esc_attr( $settings['gsc_property'] ); ?>">
 							<?php elseif ( $settings['is_connected'] && $settings['gsc_scope_granted'] ) : ?>
 								<p class="description"><?php esc_html_e( 'No Search Console properties were found for this Google account.', 'dragon-content-decay' ); ?></p>
 								<input type="hidden" name="dragoncontentdecay_gsc_property" value="<?php echo esc_attr( $settings['gsc_property'] ); ?>">

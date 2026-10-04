@@ -2,14 +2,14 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Dragon Content Decay 1.0.16\n"
+"Project-Id-Version: Dragon Content Decay 1.0.17\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/dragon-content-decay\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-02T16:06:12+00:00\n"
+"POT-Creation-Date: 2026-10-04T13:01:03+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.11.0\n"
 "X-Domain: dragon-content-decay\n"
@@ -18,7 +18,7 @@ msgstr ""
 #: dragon-content-decay.php
 #: admin/views/dashboard.php:14
 #: admin/views/settings.php:14
-#: includes/class-admin.php:71
+#: includes/class-admin.php:77
 msgid "Dragon Content Decay"
 msgstr ""
 
@@ -155,7 +155,7 @@ msgstr ""
 #. translators: %s: Decay score percentage
 #: admin/views/dashboard.php:183
 #: admin/views/dashboard.php:269
-#: includes/class-admin.php:448
+#: includes/class-admin.php:518
 #: includes/class-notifications.php:359
 msgid "%s%%"
 msgstr ""
@@ -195,19 +195,19 @@ msgid "All Trends"
 msgstr ""
 
 #: admin/views/dashboard.php:225
-#: includes/class-admin.php:207
+#: includes/class-admin.php:306
 #: includes/class-notifications.php:337
 msgid "Decaying"
 msgstr ""
 
 #: admin/views/dashboard.php:226
-#: includes/class-admin.php:208
+#: includes/class-admin.php:307
 #: includes/class-notifications.php:341
 msgid "Stable"
 msgstr ""
 
 #: admin/views/dashboard.php:227
-#: includes/class-admin.php:209
+#: includes/class-admin.php:308
 #: includes/class-notifications.php:345
 msgid "Growing"
 msgstr ""
@@ -351,224 +351,234 @@ msgstr ""
 msgid "- Select a property -"
 msgstr ""
 
-#: admin/views/settings.php:161
+#: admin/views/settings.php:163
+msgid "Search Console properties could not be listed."
+msgstr ""
+
+#: admin/views/settings.php:168
 msgid "No Search Console properties were found for this Google account."
 msgstr ""
 
-#: admin/views/settings.php:164
+#: admin/views/settings.php:171
 msgid "Connect and grant Search Console access to choose a property."
 msgstr ""
 
-#: admin/views/settings.php:171
+#: admin/views/settings.php:178
 msgid "Connection Status"
 msgstr ""
 
-#: admin/views/settings.php:176
+#: admin/views/settings.php:183
 msgid "Connected"
 msgstr ""
 
-#: admin/views/settings.php:180
+#: admin/views/settings.php:187
 msgid "Disconnect"
 msgstr ""
 
-#: admin/views/settings.php:185
+#: admin/views/settings.php:192
 msgid "Not Connected"
 msgstr ""
 
-#: admin/views/settings.php:190
+#: admin/views/settings.php:197
 msgid "Connect to Google"
 msgstr ""
 
-#: admin/views/settings.php:194
+#: admin/views/settings.php:201
 msgid "Enter your Client ID and Secret above, save settings, then connect."
 msgstr ""
 
-#: admin/views/settings.php:207
+#: admin/views/settings.php:214
 msgid "Analysis Settings"
 msgstr ""
 
-#: admin/views/settings.php:213
+#: admin/views/settings.php:220
 msgid "Decay Threshold (%)"
 msgstr ""
 
-#: admin/views/settings.php:224
+#: admin/views/settings.php:231
 msgid "Posts with traffic change below this threshold will be marked as decaying. Default: -20%"
 msgstr ""
 
-#: admin/views/settings.php:230
+#: admin/views/settings.php:237
 msgid "Comparison Period"
 msgstr ""
 
-#: admin/views/settings.php:235
+#: admin/views/settings.php:242
 msgid "30 days"
 msgstr ""
 
-#: admin/views/settings.php:238
+#: admin/views/settings.php:245
 msgid "60 days"
 msgstr ""
 
-#: admin/views/settings.php:241
+#: admin/views/settings.php:248
 msgid "90 days"
 msgstr ""
 
-#: admin/views/settings.php:245
+#: admin/views/settings.php:252
 msgid "Compare traffic over this period vs the previous period of the same length."
 msgstr ""
 
-#: admin/views/settings.php:250
+#: admin/views/settings.php:257
 msgid "Post Types to Track"
 msgstr ""
 
-#: admin/views/settings.php:275
+#: admin/views/settings.php:282
 msgid "Email Notifications"
 msgstr ""
 
-#: admin/views/settings.php:281
+#: admin/views/settings.php:288
 msgid "Email Digest"
 msgstr ""
 
-#: admin/views/settings.php:286
+#: admin/views/settings.php:293
 msgid "Off"
 msgstr ""
 
-#: admin/views/settings.php:289
+#: admin/views/settings.php:296
 msgid "Weekly"
 msgstr ""
 
-#: admin/views/settings.php:292
+#: admin/views/settings.php:299
 msgid "Monthly"
 msgstr ""
 
 #. translators: %s: Admin email
-#: admin/views/settings.php:299
+#: admin/views/settings.php:306
 msgid "Digest emails will be sent to: %s"
 msgstr ""
 
-#: admin/views/settings.php:309
+#: admin/views/settings.php:316
 msgid "Uninstall"
 msgstr ""
 
-#: admin/views/settings.php:312
+#: admin/views/settings.php:319
 msgid "Delete data on uninstall"
 msgstr ""
 
-#: admin/views/settings.php:316
+#: admin/views/settings.php:323
 msgid "Remove settings, Google credentials and analytics history when the plugin is deleted. Leave off to keep them through a reinstall."
 msgstr ""
 
-#: admin/views/settings.php:322
+#: admin/views/settings.php:329
 msgid "Save Settings"
 msgstr ""
 
-#: admin/views/settings.php:329
+#: admin/views/settings.php:336
 msgid "Setup Guide"
 msgstr ""
 
-#: admin/views/settings.php:336
+#: admin/views/settings.php:343
 msgid "Create Google Cloud Project"
 msgstr ""
 
-#: admin/views/settings.php:337
+#: admin/views/settings.php:344
 msgid "Go to Google Cloud Console and create a new project (or select an existing one)."
 msgstr ""
 
-#: admin/views/settings.php:339
+#: admin/views/settings.php:346
 msgid "Open Cloud Console"
 msgstr ""
 
-#: admin/views/settings.php:347
+#: admin/views/settings.php:354
 msgid "Enable Analytics Data API"
 msgstr ""
 
-#: admin/views/settings.php:348
+#: admin/views/settings.php:355
 msgid "Enable the Google Analytics Data API for your project."
 msgstr ""
 
-#: admin/views/settings.php:350
+#: admin/views/settings.php:357
 msgid "Enable API"
 msgstr ""
 
-#: admin/views/settings.php:358
+#: admin/views/settings.php:365
 msgid "Configure the OAuth Consent Screen"
 msgstr ""
 
-#: admin/views/settings.php:359
+#: admin/views/settings.php:366
 msgid "Set up the OAuth consent screen (Google Auth Platform) for the project: choose External as the user type (or Internal if you use Google Workspace and connect with an account in that organisation), and fill in the app name and your email address."
 msgstr ""
 
-#: admin/views/settings.php:360
+#: admin/views/settings.php:367
 msgid "A new External app starts in Testing, where only the test users you list can sign in, and Google expires their sign-in after 7 days. Either publish the app (Publish app, under Audience) so the connection lasts, or add the Google account you will connect with as a test user and reconnect when it expires."
 msgstr ""
 
-#: admin/views/settings.php:361
+#: admin/views/settings.php:368
 msgid "Because the app is your own, Google may show \"Google hasn't verified this app\" when you connect. Choose Advanced, then continue to your app."
 msgstr ""
 
-#: admin/views/settings.php:363
+#: admin/views/settings.php:370
 msgid "Open Consent Screen"
 msgstr ""
 
-#: admin/views/settings.php:371
+#: admin/views/settings.php:378
 msgid "Create OAuth Credentials"
 msgstr ""
 
-#: admin/views/settings.php:372
+#: admin/views/settings.php:379
 msgid "Create OAuth 2.0 credentials (Web application type)."
 msgstr ""
 
-#: admin/views/settings.php:374
+#: admin/views/settings.php:381
 msgid "Authorized redirect URI:"
 msgstr ""
 
-#: admin/views/settings.php:383
+#: admin/views/settings.php:390
 msgid "Find Your GA4 Property ID"
 msgstr ""
 
-#: admin/views/settings.php:384
+#: admin/views/settings.php:391
 msgid "In Google Analytics, go to Admin → Property Settings to find your Property ID (numeric)."
 msgstr ""
 
-#: includes/class-admin.php:72
+#: includes/class-admin.php:78
 msgid "Content Decay"
 msgstr ""
 
-#: includes/class-admin.php:106
+#: includes/class-admin.php:199
 msgid "Security check failed. Please try again."
 msgstr ""
 
-#: includes/class-admin.php:107
+#: includes/class-admin.php:200
 msgid "Error"
 msgstr ""
 
-#: includes/class-admin.php:125
+#: includes/class-admin.php:213
 msgid "You do not have permission to access this page."
 msgstr ""
 
-#: includes/class-admin.php:176
+#: includes/class-admin.php:275
 msgid "Syncing..."
 msgstr ""
 
-#: includes/class-admin.php:177
+#: includes/class-admin.php:276
 msgid "Sync complete!"
 msgstr ""
 
-#: includes/class-admin.php:178
+#: includes/class-admin.php:277
 msgid "An error occurred."
 msgstr ""
 
-#: includes/class-admin.php:337
+#: includes/class-admin.php:370
+#: includes/class-api-gsc.php:92
+#: includes/class-api-gsc.php:164
+msgid "The Google sign-in could not be refreshed, so Search Console could not be reached."
+msgstr ""
+
+#: includes/class-admin.php:451
 msgid "Settings saved."
 msgstr ""
 
-#: includes/class-admin.php:342
+#: includes/class-admin.php:456
 msgid "The email digest could not be scheduled, so it will not be sent. Save the settings again; if this keeps happening, another plugin may be blocking scheduled tasks."
 msgstr ""
 
-#: includes/class-admin.php:422
+#: includes/class-admin.php:492
 msgid "Decay"
 msgstr ""
 
-#: includes/class-admin.php:508
+#: includes/class-admin.php:578
 msgid "View Analytics"
 msgstr ""
 
@@ -588,16 +598,13 @@ msgstr ""
 msgid "The Google sign-in could not be refreshed just now, so Google Analytics could not be reached. The next sync will try again."
 msgstr ""
 
-#: includes/class-api-gsc.php:130
-msgid "No Search Console property is selected on the Settings tab."
-msgstr ""
-
-#: includes/class-api-gsc.php:136
-msgid "The Google sign-in could not be refreshed, so Search Console could not be reached."
-msgstr ""
-
-#: includes/class-api-gsc.php:297
+#: includes/class-api-gsc.php:106
+#: includes/class-api-gsc.php:325
 msgid "Search Console sent a response that could not be read."
+msgstr ""
+
+#: includes/class-api-gsc.php:158
+msgid "No Search Console property is selected on the Settings tab."
 msgstr ""
 
 #: includes/class-error-text.php:142

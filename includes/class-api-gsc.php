@@ -2,7 +2,7 @@
 /**
  * GSC API Class
  *
- * Google Search Console (Search Analytics) integration — an optional signal
+ * Google Search Console (Search Analytics) integration: an optional signal
  * alongside GA4 pageviews. Uses the same OAuth connection with the added
  * webmasters.readonly scope and a plain HTTPS client against the documented
  * Search Console API v3 endpoint.
@@ -38,6 +38,14 @@ class API_GSC {
 	 * @var string
 	 */
 	private string $last_error_detail = '';
+
+	/**
+	 * Why the most recent list_sites() call could not list the properties, or
+	 * '' when it could (the list may still be empty).
+	 *
+	 * @var string
+	 */
+	private string $list_error = '';
 
 	/**
 	 * Search Console API base.
@@ -77,18 +85,28 @@ class API_GSC {
 	 * @return string[] siteUrls (e.g. "sc-domain:example.com", "https://example.com/").
 	 */
 	public function list_sites(): array {
+		$this->list_error = '';
+
 		$token = $this->oauth->get_access_token();
 		if ( ! $token ) {
+			$this->list_error = __( 'The Google sign-in could not be refreshed, so Search Console could not be reached.', 'dragon-content-decay' );
 			return array();
 		}
 
-		$res = call_user_func( $this->transport, 'GET', self::API_BASE . '/sites', array(), $token );
-		if ( 200 !== (int) ( $res['code'] ?? 0 ) ) {
+		$res  = call_user_func( $this->transport, 'GET', self::API_BASE . '/sites', array(), $token );
+		$code = (int) ( $res['code'] ?? 0 );
+		$raw  = (string) ( $res['body'] ?? '' );
+		if ( 200 !== $code ) {
+			$this->list_error = Error_Text::message( Error_Text::classify( $raw, '', $code ), Error_Text::SERVICE_GSC );
 			return array();
 		}
 
-		$data = json_decode( (string) ( $res['body'] ?? '' ), true );
-		if ( ! is_array( $data ) || empty( $data['siteEntry'] ) || ! is_array( $data['siteEntry'] ) ) {
+		$data = json_decode( $raw, true );
+		if ( ! is_array( $data ) ) {
+			$this->list_error = __( 'Search Console sent a response that could not be read.', 'dragon-content-decay' );
+			return array();
+		}
+		if ( empty( $data['siteEntry'] ) || ! is_array( $data['siteEntry'] ) ) {
 			return array();
 		}
 
@@ -100,6 +118,16 @@ class API_GSC {
 		}
 
 		return $sites;
+	}
+
+	/**
+	 * Why the most recent list_sites() call could not list the properties, or
+	 * '' when it could.
+	 *
+	 * @return string
+	 */
+	public function get_list_error(): string {
+		return $this->list_error;
 	}
 
 	/**

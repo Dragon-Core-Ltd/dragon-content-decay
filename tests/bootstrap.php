@@ -193,18 +193,36 @@ if ( ! function_exists( 'current_time' ) ) {
 	}
 }
 
-// Posts known to the stubs: ID => array( 'path' => 'parent/slug', 'type' => 'post' ).
+// Posts known to the stubs: ID => array( 'path' => 'parent/slug', 'type' => 'post' ),
+// optionally with 'status' (default 'publish'). For a hierarchical type the
+// path is the page hierarchy; for any other type only its last segment (the
+// slug) is the post's own name.
 $GLOBALS['dragoncontentdecay_test_posts'] = array();
+// Post types registered as hierarchical.
+$GLOBALS['dragoncontentdecay_test_hierarchical'] = array( 'page' );
 // Full URL => post ID answers for url_to_postid().
 $GLOBALS['dragoncontentdecay_test_url_ids'] = array();
 
+if ( ! function_exists( 'is_post_type_hierarchical' ) ) {
+	function is_post_type_hierarchical( $post_type ) {
+		return in_array( $post_type, $GLOBALS['dragoncontentdecay_test_hierarchical'], true );
+	}
+}
+
 if ( ! function_exists( 'get_page_by_path' ) ) {
-	// Matches the full hierarchical path within the given post type(s).
+	// Core walks the page hierarchy for the given post type(s) and has no
+	// status condition. A post without a parent matches on its slug alone
+	// when the path is that single segment, whatever its real permalink.
 	function get_page_by_path( $page_path, $output = OBJECT, $post_type = 'page' ) {
 		unset( $output );
 		$types = (array) $post_type;
+		$path  = trim( (string) $page_path, '/' );
 		foreach ( $GLOBALS['dragoncontentdecay_test_posts'] as $id => $post ) {
-			if ( trim( (string) $page_path, '/' ) === $post['path'] && in_array( $post['type'], $types, true ) ) {
+			if ( ! in_array( $post['type'], $types, true ) ) {
+				continue;
+			}
+			$own = is_post_type_hierarchical( $post['type'] ) ? $post['path'] : basename( $post['path'] );
+			if ( $path === $own ) {
 				return (object) array(
 					'ID'        => $id,
 					'post_type' => $post['type'],
@@ -212,6 +230,13 @@ if ( ! function_exists( 'get_page_by_path' ) ) {
 			}
 		}
 		return null;
+	}
+}
+
+if ( ! function_exists( 'get_post_status' ) ) {
+	function get_post_status( $post = null ) {
+		$id = is_object( $post ) ? (int) $post->ID : (int) $post;
+		return isset( $GLOBALS['dragoncontentdecay_test_posts'][ $id ] ) ? ( $GLOBALS['dragoncontentdecay_test_posts'][ $id ]['status'] ?? 'publish' ) : false;
 	}
 }
 
@@ -450,10 +475,13 @@ if ( ! function_exists( 'wp_salt' ) ) {
 	}
 }
 
+// Whether the current user holds the capabilities the plugin asks for.
+$GLOBALS['dragoncontentdecay_test_can'] = true;
+
 if ( ! function_exists( 'current_user_can' ) ) {
 	function current_user_can( $capability, ...$args ) {
 		unset( $capability, $args );
-		return true;
+		return (bool) $GLOBALS['dragoncontentdecay_test_can'];
 	}
 }
 
@@ -471,10 +499,18 @@ if ( ! class_exists( 'WP_Post' ) ) {
 
 $GLOBALS['dragoncontentdecay_test_settings_errors'] = array();
 
+// The valid nonce per action; an action not listed here accepts 'valid'.
+$GLOBALS['dragoncontentdecay_test_nonces'] = array();
+
 if ( ! function_exists( 'wp_verify_nonce' ) ) {
+	// Core returns 1 or 2 for a nonce that is valid for THIS action and false
+	// otherwise, including for an empty or non-string nonce.
 	function wp_verify_nonce( $nonce, $action = -1 ) {
-		unset( $action );
-		return 'valid' === $nonce ? 1 : false;
+		if ( ! is_string( $nonce ) || '' === $nonce ) {
+			return false;
+		}
+		$valid = $GLOBALS['dragoncontentdecay_test_nonces'][ (string) $action ] ?? 'valid';
+		return hash_equals( $valid, $nonce ) ? 1 : false;
 	}
 }
 
@@ -486,15 +522,32 @@ if ( ! function_exists( 'wp_unslash' ) ) {
 
 if ( ! function_exists( 'sanitize_key' ) ) {
 	function sanitize_key( $key ) {
+		// Core returns '' for anything that is not a scalar.
+		if ( ! is_scalar( $key ) ) {
+			return '';
+		}
 		return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( (string) $key ) );
 	}
 }
 
 if ( ! function_exists( 'sanitize_text_field' ) ) {
 	function sanitize_text_field( $str ) {
-		// Core also strips tags, folds whitespace and removes %XX octets.
+		// Core returns '' for an array or object.
+		if ( is_object( $str ) || is_array( $str ) ) {
+			return '';
+		}
+		// Core also strips tags, folds whitespace and removes %XX octets. A '<'
+		// that never closes is entity-encoded first (wp_pre_kses_less_than()),
+		// so it does not swallow the rest of the value.
 		$filtered = (string) $str;
 		if ( str_contains( $filtered, '<' ) ) {
+			$filtered = (string) preg_replace_callback(
+				'%<[^>]*?((?=<)|>|$)%',
+				static function ( $matches ) {
+					return str_contains( $matches[0], '>' ) ? $matches[0] : htmlspecialchars( $matches[0], ENT_QUOTES, 'UTF-8' );
+				},
+				$filtered
+			);
 			$filtered = strip_tags( $filtered );
 		}
 		$filtered = trim( (string) preg_replace( '/[\r\n\t ]+/', ' ', $filtered ) );
@@ -648,7 +701,8 @@ function dragoncontentdecay_test_reset_transients(): void {
  * Reset every stub store between tests.
  */
 function dragoncontentdecay_test_reset(): void {
-	$GLOBALS['dragoncontentdecay_test_options']          = array();
+	// The stub site uses "Post name" permalinks.
+	$GLOBALS['dragoncontentdecay_test_options']          = array( 'permalink_structure' => '/%postname%/' );
 	$GLOBALS['dragoncontentdecay_test_options_readonly'] = false;
 	$GLOBALS['dragoncontentdecay_test_transients']       = array();
 	$GLOBALS['dragoncontentdecay_test_filters']          = array();
@@ -658,10 +712,13 @@ function dragoncontentdecay_test_reset(): void {
 	$GLOBALS['dragoncontentdecay_test_blogname']         = 'Rich&#039;s Shop &amp; Co';
 	$GLOBALS['dragoncontentdecay_test_home_path']        = '';
 	$GLOBALS['dragoncontentdecay_test_posts']            = array();
+	$GLOBALS['dragoncontentdecay_test_hierarchical']     = array( 'page' );
 	$GLOBALS['dragoncontentdecay_test_url_ids']          = array();
 	$GLOBALS['dragoncontentdecay_test_sites']            = array();
 	$GLOBALS['dragoncontentdecay_test_blog_stack']       = array();
 	$GLOBALS['dragoncontentdecay_test_blog_id']          = 1;
+	$GLOBALS['dragoncontentdecay_test_can']              = true;
+	$GLOBALS['dragoncontentdecay_test_nonces']           = array();
 }
 
 

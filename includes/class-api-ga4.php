@@ -441,16 +441,21 @@ class API_GA4 {
 		$relative = trim( $relative, '/' );
 		$types    = Analyzer::tracked_post_types();
 
-		if ( '' !== $relative ) {
-			$post = get_page_by_path( $relative, OBJECT, $types );
-			if ( $post ) {
+		// The page hierarchy is a page's permalink. get_page_by_path() would
+		// match a post of any other type on its slug alone, whatever its real
+		// address, and has no status condition, so it is asked about pages only
+		// and its answer kept only when published.
+		if ( '' !== $relative && in_array( 'page', $types, true ) ) {
+			$post = get_page_by_path( $relative, OBJECT, array( 'page' ) );
+			if ( $post && 'publish' === get_post_status( $post->ID ) ) {
 				return (int) $post->ID;
 			}
 		}
 
-		// url_to_postid() answers for any post type, so keep only tracked ones.
+		// url_to_postid() follows the rewrite rules and answers for any post
+		// type and status, so keep only published posts of a tracked type.
 		$post_id = url_to_postid( home_url( $relative ) );
-		if ( $post_id <= 0 || ! in_array( get_post_type( $post_id ), $types, true ) ) {
+		if ( $post_id <= 0 || ! in_array( get_post_type( $post_id ), $types, true ) || 'publish' !== get_post_status( $post_id ) ) {
 			return null;
 		}
 

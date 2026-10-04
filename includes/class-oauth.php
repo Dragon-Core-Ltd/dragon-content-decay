@@ -350,7 +350,7 @@ class OAuth {
 	 */
 	private function store_granted_scopes( array $tokens ): void {
 		// Prefer the scopes Google actually granted (the token endpoint's 'scope'
-		// field). If it is ever absent, fall back to the scopes we just requested —
+		// field). If it is ever absent, fall back to the scopes we just requested,
 		// so a successful connect always records *something*, and the Search Console
 		// state can never get stuck "not granted" forever when 'scope' is omitted.
 		$scopes = ( isset( $tokens['scope'] ) && is_string( $tokens['scope'] ) && '' !== trim( $tokens['scope'] ) )

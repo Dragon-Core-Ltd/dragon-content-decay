@@ -23,7 +23,6 @@ Thumbs.db
 coverage/
 
 # Dev config
-composer.lock
 package-lock.json
 
 # Debug

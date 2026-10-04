@@ -3,6 +3,8 @@
 Connects to Google Analytics 4 and finds the posts losing traffic - so you refresh them before the rankings go.
 
 ## Getting started
+Requires WordPress 6.0 or later and PHP 8.2 or later (the bundled Google client needs PHP 8.2).
+
 Allow about 10-15 minutes the first time: the plugin reads your analytics with your own Google Cloud credentials, so you create those once in Google Cloud Console. The **Setup Guide** at the bottom of **Settings** repeats these steps with links.
 
 ### Google Cloud setup
@@ -18,12 +20,12 @@ Because the app is your own and unverified, Google may show *"Google hasn't veri
 2. Enter this site's **GA4 Property ID** (the number shown under **Admin → Property Settings** in Google Analytics) and save.
 3. The first scan compares each post's page views over the chosen period (full days, ending yesterday in your site's timezone) with the period of equal length before it, and classifies each post as **Decaying**, **Stable**, or **Growing**. Only the post types chosen under **Post Types to Track** are scored. On a very large property Google Analytics returns only the busiest pages for a period; when some of a post's addresses were left out and could have changed its score, the post is still scored and its row shows **Partial data**.
 
-A post's page views are the sum over every address Google Analytics reports for it, such as a different letter case or an old category path. Feed, embed, AMP, comment-page and paged addresses of a post are left out. On a site installed in a subfolder (for example `example.com/blog`), the subfolder is matched automatically.
+A post's page views are the sum over every address Google Analytics reports for it, such as a different letter case or an old category path. Feed, embed, AMP, comment-page and paged addresses of a post are left out. A short address such as `/pricing` counts towards a post only when that is the post's own address (a top-level page, or a post under the "Post name" permalink structure); only published posts are credited. A post with no views in either period has no score, so its row drops off after the next sync; when Google Analytics returned only the busiest pages, existing scores are kept. On a site installed in a subfolder (for example `example.com/blog`), the subfolder is matched automatically.
 
 ## Reading the dashboard
 Decaying posts are your refresh queue: each row shows the traffic trend and links straight to the editor. Prioritise the ones with the steepest decline and the most historical traffic - those are recoverable rankings.
 
-The summary cards, the table and the posts-list **Decay** column all judge scores against your current threshold, so changing it in Settings takes effect immediately. The table lists the 100 lowest-scoring published posts; the cards count every tracked published post. **View Analytics** under a post in the posts list opens the dashboard with that post's figures at the top.
+The summary cards, the table and the posts-list **Decay** column all judge scores against your current threshold, so changing it in Settings takes effect immediately. The table lists the 100 lowest-scoring published posts (posts with the same score are ordered by their previous-period views, busiest first); the cards count every tracked published post that has a score. **View Analytics** under a post in the posts list opens the dashboard with that post's figures at the top.
 
 If a sync cannot fetch data from Google Analytics, no scores are changed and the dashboard shows the reason next to *Last synced* in plain language (for example: Google could not be reached, the sign-in was not accepted, the API is not enabled, the property was not found or refused access, or the usage limit was reached). **Technical details** under the message shows exactly what Google returned.
 
@@ -52,4 +54,5 @@ OAuth tokens are stored encrypted in your database; traffic data is fetched from
 - **"Connect" fails after approving** - check the **GA4 Property ID** in Settings: it must be this site's property, and the Google account must have access to it.
 - **"Google no longer accepts this site's saved sign-in"** - the refresh token was revoked or expired (for example, access was removed in your Google account). Syncing stops until you connect again from Settings. A temporary failure to refresh is retried after 15 minutes.
 - **Numbers look different from GA4's UI** - the plugin reads page views (`screenPageViews`) per page path over full days ending yesterday, adds up a post's addresses and leaves out its feed, embed, AMP, comment-page and paged addresses; GA4's UI often shows filtered or modelled views and includes today.
+- **"Search Console properties could not be listed"** - the message after it says why (for example, the Search Console API is not enabled in your Google Cloud project). Fix that, then reload Settings.
 - **Search Console shows no data** - confirm the Search Console API is enabled in your Google Cloud project and that you reconnected after ticking the option; Search Console data also lags real time by 2–3 days.

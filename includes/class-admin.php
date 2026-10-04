@@ -28,6 +28,12 @@ class Admin {
 	private OAuth $oauth;
 
 	/**
+	 * Why the Search Console properties could not be listed on this request,
+	 * or '' (see gsc_site_choices()).
+	 */
+	private string $gsc_sites_error = '';
+
+	/**
 	 * Analyzer instance
 	 */
 	private Analyzer $analyzer;
@@ -80,8 +86,9 @@ class Admin {
 	}
 
 	/**
-	 * Handle OAuth connect/disconnect/callback requests before any output,
-	 * so their redirects can be sent.
+	 * Route OAuth connect/disconnect/callback requests before any output, so
+	 * their redirects can be sent. Each action checks its own nonce (or the
+	 * OAuth state) and the capability.
 	 */
 	public function handle_oauth_request(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -94,27 +101,108 @@ class Admin {
 			return;
 		}
 
-		// Handle OAuth actions (with CSRF protection)
-		if ( isset( $_GET['action'] ) ) {
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below for state-changing actions; OAuth callback is validated separately.
-			$action = sanitize_text_field( wp_unslash( $_GET['action'] ) );
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Reading the action for routing only; the handler it names verifies the request.
+		$action = isset( $_GET['action'] ) ? sanitize_text_field( wp_unslash( $_GET['action'] ) ) : '';
 
-			// Verify nonce for connect/disconnect actions
-			if ( in_array( $action, array( 'connect', 'disconnect' ), true ) ) {
-				if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
-					wp_die(
-						esc_html__( 'Security check failed. Please try again.', 'dragon-content-decay' ),
-						esc_html__( 'Error', 'dragon-content-decay' ),
-						array(
-							'response'  => 403,
-							'back_link' => true,
-						)
-					);
-				}
+		if ( 'connect' === $action ) {
+			$this->handle_oauth_connect();
+		} elseif ( 'disconnect' === $action ) {
+			$this->handle_oauth_disconnect();
+		} elseif ( 'callback' === $action ) {
+			$this->handle_oauth_callback();
+		}
+	}
+
+	/**
+	 * Start the Google sign-in: redirect to Google's consent screen.
+	 */
+	public function handle_oauth_connect(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
+			$this->die_security_check();
+			return;
+		}
+
+		$auth_url = $this->oauth->get_auth_url();
+		if ( $auth_url ) {
+			// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect target is Google's external OAuth endpoint; wp_safe_redirect() would strip it.
+			wp_redirect( $auth_url );
+			exit;
+		}
+	}
+
+	/**
+	 * Remove the saved Google connection.
+	 */
+	public function handle_oauth_disconnect(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( wp_unslash( $_GET['_wpnonce'] ) ), 'dragoncontentdecay_oauth_action' ) ) {
+			$this->die_security_check();
+			return;
+		}
+
+		$this->oauth->disconnect();
+		wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&disconnected=1' ) );
+		exit;
+	}
+
+	/**
+	 * Finish the Google sign-in when Google redirects back.
+	 *
+	 * The request carries no WordPress nonce (it comes from Google), so the
+	 * CSRF defence is the single-use OAuth state set when the auth URL was
+	 * built. It is verified before the code is accepted, or an attacker could
+	 * bind this site to their own Google account.
+	 */
+	public function handle_oauth_callback(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Google's redirect cannot carry a WordPress nonce; the single-use OAuth state verified below is the CSRF check.
+		if ( isset( $_GET['code'] ) ) {
+			$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
+			if ( ! OAuth::verify_state( $state ) ) {
+				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=state' ) );
+				exit;
 			}
 
-			$this->handle_oauth_action( $action );
+			// An authorization code is printable ASCII (RFC 6749, appendix A.11).
+			// It is passed on unaltered, or not at all.
+			$code = filter_var( wp_unslash( $_GET['code'] ), FILTER_VALIDATE_REGEXP, array( 'options' => array( 'regexp' => '/^[\x20-\x7E]+$/D' ) ) );
+			if ( is_string( $code ) && $this->oauth->handle_callback( $code ) ) {
+				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&connected=1' ) );
+				exit;
+			}
+			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=callback' ) );
+			exit;
 		}
+
+		if ( isset( $_GET['error'] ) ) {
+			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=denied' ) );
+			exit;
+		}
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+	}
+
+	/**
+	 * End the request when a connect or disconnect link fails its nonce check.
+	 */
+	private function die_security_check(): void {
+		wp_die(
+			esc_html__( 'Security check failed. Please try again.', 'dragon-content-decay' ),
+			esc_html__( 'Error', 'dragon-content-decay' ),
+			array(
+				'response'  => 403,
+				'back_link' => true,
+			)
+		);
 	}
 
 	/**
@@ -139,6 +227,17 @@ class Admin {
 	 * Enqueue admin assets
 	 */
 	public function enqueue_assets( string $hook ): void {
+		// The posts list needs only the styles that colour the Decay column.
+		if ( 'edit.php' === $hook ) {
+			wp_enqueue_style(
+				'dcd-admin',
+				DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/css/admin.css',
+				array(),
+				DRAGONCONTENTDECAY_VERSION
+			);
+			return;
+		}
+
 		// Only load on our plugin pages
 		if ( ! str_contains( $hook, 'dragon-content-decay' ) ) {
 			return;
@@ -234,6 +333,8 @@ class Admin {
 	 * Get current settings
 	 */
 	private function get_settings(): array {
+		$gsc_sites = $this->gsc_site_choices();
+
 		return array(
 			'client_id'         => get_option( 'dragoncontentdecay_google_client_id', '' ),
 			// Never expose the real secret to the page; show a fixed mask when set.
@@ -248,7 +349,8 @@ class Admin {
 			'gsc_enabled'       => (bool) get_option( 'dragoncontentdecay_gsc_enabled', 0 ),
 			'gsc_property'      => (string) get_option( 'dragoncontentdecay_gsc_property', '' ),
 			'gsc_scope_granted' => OAuth::has_searchconsole_scope(),
-			'gsc_sites'         => $this->gsc_site_choices(),
+			'gsc_sites'         => $gsc_sites,
+			'gsc_sites_error'   => $this->gsc_sites_error,
 		);
 	}
 
@@ -259,7 +361,13 @@ class Admin {
 	 * @return string[]
 	 */
 	private function gsc_site_choices(): array {
-		if ( ! get_option( 'dragoncontentdecay_gsc_enabled', 0 ) || ! $this->oauth->is_connected() || ! OAuth::has_searchconsole_scope() ) {
+		if ( ! get_option( 'dragoncontentdecay_gsc_enabled', 0 ) || ! OAuth::has_searchconsole_scope() || ! $this->oauth->has_connection() ) {
+			return array();
+		}
+
+		// A saved connection whose sign-in cannot be refreshed just now.
+		if ( ! $this->oauth->is_connected() ) {
+			$this->gsc_sites_error = __( 'The Google sign-in could not be refreshed, so Search Console could not be reached.', 'dragon-content-decay' );
 			return array();
 		}
 
@@ -271,7 +379,10 @@ class Admin {
 			return $cached;
 		}
 
-		$sites = ( new API_GSC( $this->oauth ) )->list_sites();
+		$gsc   = new API_GSC( $this->oauth );
+		$sites = $gsc->list_sites();
+
+		$this->gsc_sites_error = $gsc->get_list_error();
 		if ( ! empty( $sites ) ) {
 			set_transient( 'dragoncontentdecay_gsc_sites', $sites, 10 * MINUTE_IN_SECONDS );
 		}
@@ -297,10 +408,13 @@ class Admin {
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_google_client_secret'] ) ) {
-			$posted_secret = sanitize_text_field( wp_unslash( $_POST['dragoncontentdecay_google_client_secret'] ) );
+			// Kept byte for byte apart from control characters and the spaces a
+			// paste leaves around it; a text sanitizer would alter a secret.
+			$posted_secret = filter_var( wp_unslash( $_POST['dragoncontentdecay_google_client_secret'] ), FILTER_UNSAFE_RAW, FILTER_FLAG_STRIP_LOW );
+			$posted_secret = is_string( $posted_secret ) ? trim( $posted_secret ) : null;
 			// The mask is what an unchanged field submits; only overwrite when the
 			// admin actually entered a new value. The secret is stored encrypted.
-			if ( self::SECRET_MASK !== $posted_secret ) {
+			if ( null !== $posted_secret && self::SECRET_MASK !== $posted_secret ) {
 				OAuth::set_client_secret( $posted_secret );
 			}
 		}
@@ -322,8 +436,8 @@ class Admin {
 		}
 
 		if ( isset( $_POST['dragoncontentdecay_post_types'] ) ) {
-			$post_types = array_map( 'sanitize_text_field', (array) wp_unslash( $_POST['dragoncontentdecay_post_types'] ) );
-			update_option( 'dragoncontentdecay_post_types', $post_types );
+			$post_types = map_deep( wp_unslash( $_POST['dragoncontentdecay_post_types'] ), 'sanitize_text_field' );
+			update_option( 'dragoncontentdecay_post_types', array_values( array_filter( (array) $post_types, 'is_string' ) ) );
 		}
 
 		update_option( 'dragoncontentdecay_gsc_enabled', empty( $_POST['dragoncontentdecay_gsc_enabled'] ) ? 0 : 1 );
@@ -340,50 +454,6 @@ class Admin {
 		// WordPress would not schedule it, rather than implying it will be sent.
 		if ( ! Notifications::sync_digest_schedule() ) {
 			add_settings_error( 'dragoncontentdecay_settings', 'digest_not_scheduled', __( 'The email digest could not be scheduled, so it will not be sent. Save the settings again; if this keeps happening, another plugin may be blocking scheduled tasks.', 'dragon-content-decay' ), 'error' );
-		}
-	}
-
-	/**
-	 * Handle OAuth actions (connect/disconnect)
-	 */
-	private function handle_oauth_action( string $action ): void {
-		if ( 'connect' === $action ) {
-			// Redirect to Google OAuth
-			$auth_url = $this->oauth->get_auth_url();
-			if ( $auth_url ) {
-				// phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect target is Google's external OAuth endpoint; wp_safe_redirect() would strip it.
-				wp_redirect( $auth_url );
-				exit;
-			}
-		} elseif ( 'disconnect' === $action ) {
-			$this->oauth->disconnect();
-			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&disconnected=1' ) );
-			exit;
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth callback request originates from Google and cannot carry a WordPress nonce; page is capability-gated.
-		} elseif ( 'callback' === $action && isset( $_GET['code'] ) ) {
-			// The callback carries no WP nonce (it comes from Google), so the CSRF
-			// defence is the OAuth state we set when building the auth URL. Verify
-			// it before accepting the code, or an attacker could bind this site to
-			// their own Google account.
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- CSRF is enforced via the OAuth state token verified here.
-			$state = isset( $_GET['state'] ) ? sanitize_text_field( wp_unslash( $_GET['state'] ) ) : '';
-			if ( ! OAuth::verify_state( $state ) ) {
-				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=state' ) );
-				exit;
-			}
-
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- CSRF is enforced via the OAuth state token verified above.
-			$code = sanitize_text_field( wp_unslash( $_GET['code'] ) );
-			if ( $this->oauth->handle_callback( $code ) ) {
-				wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&connected=1' ) );
-				exit;
-			}
-			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=callback' ) );
-			exit;
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Google's error redirect carries no WordPress nonce; it only leads to a display-only notice.
-		} elseif ( 'callback' === $action && isset( $_GET['error'] ) ) {
-			wp_safe_redirect( admin_url( 'tools.php?page=dragon-content-decay&tab=settings&oauth_error=denied' ) );
-			exit;
 		}
 	}
 
@@ -434,7 +504,7 @@ class Admin {
 		$score = $this->analyzer->get_post_decay( $post_id );
 
 		if ( null === $score ) {
-			echo '<span class="dcd-no-data">—</span>';
+			echo '<span class="dcd-no-data">-</span>';
 			return;
 		}
 

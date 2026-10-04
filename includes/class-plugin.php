@@ -73,7 +73,7 @@ class Plugin {
 	 * create_tables() only runs on activation, so a plugin *update* (which does
 	 * not re-activate) would never pick up new columns, e.g. the Search Console
 	 * columns added to dcd_scores. The stored db version is compared on every load
-	 * — a cheap autoloaded-option read — and dbDelta (idempotent) is re-run only
+	 * (a cheap autoloaded-option read) and dbDelta (idempotent) is re-run only
 	 * when it differs, so the ALTER runs once per update and is in place before any
 	 * sync writes a score row.
 	 */
@@ -86,6 +86,23 @@ class Plugin {
 	}
 
 	/**
+	 * Option names (without prefix) the pre-1.0.1 releases stored under dcd_.
+	 * uninstall.php lists the same names.
+	 */
+	private const LEGACY_OPTIONS = array(
+		'comparison_period',
+		'decay_threshold',
+		'email_frequency',
+		'ga4_property_id',
+		'google_client_id',
+		'google_client_secret',
+		'google_tokens',
+		'last_sync',
+		'last_sync_count',
+		'post_types',
+	);
+
+	/**
 	 * Move options and scheduled events off the pre-1.0.1 three-letter (dcd_)
 	 * prefix.
 	 *
@@ -95,36 +112,33 @@ class Plugin {
 	 * across once, and the sync/digest cron events are re-pointed at the renamed
 	 * hooks. The analytics and scores tables keep their names (matched by exact
 	 * name), so cached report data is untouched.
+	 *
+	 * It runs once per site: a stored flag stops it from reading the legacy
+	 * names on every request, or from copying a later dcd_ option over the
+	 * live settings.
 	 */
 	private static function migrate_legacy_prefix(): void {
+		if ( get_option( 'dragoncontentdecay_legacy_migrated' ) ) {
+			return;
+		}
+
 		// db_version is a schema marker managed by activation/create_tables, not
 		// user data; just drop the legacy copy.
 		delete_option( 'dcd_db_version' );
 
-		$options = array(
-			'comparison_period',
-			'decay_threshold',
-			'email_frequency',
-			'ga4_property_id',
-			'google_client_id',
-			'google_client_secret',
-			'google_tokens',
-			'last_sync',
-			'last_sync_count',
-			'post_types',
-		);
-
-		// Copy each legacy value onto the new name, then remove the legacy copy —
+		// Copy each legacy value onto the new name, then remove the legacy copy -
 		// per option, so the delete only ever runs after a successful copy. (A
 		// single shared guard would delete on a deactivate/reactivate cycle, where
 		// activation re-stamps the new db_version before the copy could run.)
-		foreach ( $options as $name ) {
+		foreach ( self::LEGACY_OPTIONS as $name ) {
 			$legacy = get_option( 'dcd_' . $name, null );
 			if ( null !== $legacy ) {
 				update_option( 'dragoncontentdecay_' . $name, $legacy );
 				delete_option( 'dcd_' . $name );
 			}
 		}
+
+		update_option( 'dragoncontentdecay_legacy_migrated', 1 );
 	}
 
 	/**
@@ -222,7 +236,22 @@ class Plugin {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql_scores );
 
-		// Store database version
+		// dbDelta() does not report a failed CREATE or ALTER. Store the database
+		// version only once the table and its newest column exist, so a failed
+		// upgrade is retried on the next load. Names are compared without case,
+		// as MySQL may report them in lower case.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Schema check right after dbDelta(); no cache applies.
+		$found_table = (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table_scores ) ) );
+		if ( 0 !== strcasecmp( $found_table, $table_scores ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- Schema check on a plugin-owned table; the table name is the site prefix plus a fixed basename.
+		$found_column = (string) $wpdb->get_var( "SHOW COLUMNS FROM {$table_scores} LIKE 'search_position'" );
+		if ( 0 !== strcasecmp( $found_column, 'search_position' ) ) {
+			return;
+		}
+
 		update_option( 'dragoncontentdecay_db_version', DRAGONCONTENTDECAY_VERSION );
 	}
 

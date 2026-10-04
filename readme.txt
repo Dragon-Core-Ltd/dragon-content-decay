@@ -3,8 +3,8 @@ Contributors: dragoncoreltd
 Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
-Requires PHP: 8.0
-Stable tag: 1.0.16
+Requires PHP: 8.2
+Stable tag: 1.0.17
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -92,7 +92,7 @@ package's licence file is included alongside its source.
 
 1. Upload the plugin files to `/wp-content/plugins/dragon-content-decay/`
 2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Go to Content Decay → Settings to configure
+3. Go to Tools → Content Decay → Settings to configure
 4. Set up Google Cloud credentials and connect to GA4
 5. Optionally turn on Search Console in Settings and reconnect to add search clicks and impressions
 6. View your content decay dashboard!
@@ -136,6 +136,19 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 
 == Changelog ==
 
+= 1.0.17 =
+* Changed: requires PHP 8.2. The bundled Google client already needed it, so on PHP 8.0 or 8.1 the plugin could not run; WordPress now says so before installing or updating.
+* Fixed: a post with no views in either period no longer keeps its old score, so the dashboard, the Decaying count and the email digest stop showing declines that are over. Scores are kept when Google returned only part of a report.
+* Fixed: views of a short address such as /pricing are no longer added to a post with the same slug that lives at a longer address (date-based or prefixed permalinks), and drafts and private posts are never credited.
+* Fixed: the Decay column on the posts list is now coloured by trend.
+* Fixed: if the scores table could not be created or upgraded, the plugin tries again on the next page load instead of reporting failed syncs until it is reactivated.
+* Fixed: when Search Console properties cannot be listed, the Settings screen says why instead of "No Search Console properties were found".
+* Changed: posts with the same score are listed with the one that had more views first.
+* Changed: settings from versions before 1.0.1 are moved once instead of being looked up on every page load, and uninstall removes only this plugin's own old settings.
+* Fixed: a Google client secret is saved exactly as entered. Characters such as %, < or a double space inside it are no longer removed.
+* Changed: the Connect and Disconnect links and Google's sign-in reply each verify the request themselves before doing anything, and every submitted value is checked before use.
+* Changed: a sign-in reply from Google with an unreadable code is refused instead of being cleaned up and sent on.
+
 = 1.0.16 =
 * Fixed: uninstall deletes data only when the opt-in is clearly on (1, true, yes or on), not for a value set to "false" or "no".
 
@@ -169,7 +182,7 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 * Readme: the external services section now also covers the optional Google Search Console API calls (when they happen and what is sent), states that syncs run once a day, and lists the bundled Google client libraries and their licences. No code changes.
 
 = 1.0.10 =
-* New: Google Search Console integration. Turn on "Search Console" under Settings, reconnect to Google to grant read-only access, and pick your verified property — the plugin then pulls per-page search clicks and impressions (current vs previous period) alongside GA4 pageviews, and the decaying-content dashboard gains a Search Clicks column. GA4 remains the decay driver; this is an additional signal, and existing GA4-only setups are untouched until you opt in.
+* New: Google Search Console integration. Turn on "Search Console" under Settings, reconnect to Google to grant read-only access, and pick your verified property; the plugin then pulls per-page search clicks and impressions (current vs previous period) alongside GA4 pageviews, and the decaying-content dashboard gains a Search Clicks column. GA4 remains the decay driver; this is an additional signal, and existing GA4-only setups are untouched until you opt in.
 * Note: this needs the Search Console API enabled in your Google Cloud project, and a reconnect to grant the new scope. GA4-only users are never prompted to reconnect.
 
 = 1.0.9 =
@@ -197,7 +210,7 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 * New: a clearer get-started panel when Google Analytics is not yet connected.
 
 = 1.0.3 =
-* New look: the Dragon design system arrives — a consistent Dragon Core header, cleaner tables, and unified status colours. Purely visual; no behaviour changes.
+* New look: the Dragon design system arrives: a consistent Dragon Core header, cleaner tables, and unified status colours. Purely visual; no behaviour changes.
 
 = 1.0.2 =
 * Fix: the GA4 Property ID and Google connection are now carried safely on update (they could be lost on a deactivate then reactivate cycle).
@@ -233,6 +246,9 @@ This plugin uses the [Google Analytics Data API](https://developers.google.com/a
 For more information, visit [Dragon Core](https://dragoncore.ltd/).
 
 == Upgrade Notice ==
+
+= 1.0.17 =
+Requires PHP 8.2. Stale scores of posts that stopped getting views are cleared, and views are matched to posts more precisely.
 
 = 1.0.16 =
 Uninstall deletes data only when the opt-in is clearly on.
