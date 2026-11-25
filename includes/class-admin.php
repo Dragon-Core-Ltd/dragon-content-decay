@@ -260,7 +260,7 @@ class Admin {
 		wp_enqueue_script(
 			'dcd-admin',
 			DRAGONCONTENTDECAY_PLUGIN_URL . 'admin/js/admin.js',
-			array( 'jquery' ),
+			array( 'jquery', 'wp-a11y' ),
 			DRAGONCONTENTDECAY_VERSION,
 			true
 		);

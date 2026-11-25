@@ -4,7 +4,7 @@ Tags: analytics, content, seo, ga4, traffic
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.2
-Stable tag: 1.0.17
+Stable tag: 1.0.18
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -135,6 +135,9 @@ Data syncs automatically once a day. You can also press Sync now on the dashboar
 The sync stops without changing any scores, and the dashboard says why (for example, the connection was revoked or the request failed). If Google no longer accepts the saved sign-in, the Settings tab asks you to connect again.
 
 == Changelog ==
+
+= 1.0.18 =
+* Changed: sync results and errors now show as a notice at the top of the screen (and are announced to screen readers) instead of a browser pop-up.
 
 = 1.0.17 =
 * Changed: requires PHP 8.2. The bundled Google client already needed it, so on PHP 8.0 or 8.1 the plugin could not run; WordPress now says so before installing or updating.

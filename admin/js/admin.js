@@ -5,6 +5,24 @@
 (function($) {
     'use strict';
 
+    // Show a result as a WordPress admin notice (no browser dialog), announced to screen readers.
+    function showNotice(message, type) {
+        var $wrap = $('.wrap').first();
+        $wrap.find('.dcd-js-notice').remove();
+        var $notice = $('<div class="notice is-dismissible dcd-js-notice"><p></p></div>').addClass('notice-' + (type || 'error'));
+        $notice.find('p').text(message);
+        var $heading = $wrap.find('h1').first();
+        if ($heading.length) {
+            $heading.after($notice);
+        } else {
+            $wrap.prepend($notice);
+        }
+        $(document).trigger('wp-updates-notice-added');
+        if (window.wp && wp.a11y && wp.a11y.speak) {
+            wp.a11y.speak(message, 'error' === (type || 'error') ? 'assertive' : 'polite');
+        }
+    }
+
     // Icon plus text, with the (translated) text added as a text node.
     function setLabel($button, icon, text) {
         $button.empty()
@@ -33,7 +51,7 @@
             success: function(response) {
                 if (response.success && response.data && response.data.pending) {
                     // Paths are still being matched; no score changed yet.
-                    alert(response.data.message);
+                    showNotice(response.data.message, 'info');
                     $button.prop('disabled', false).removeClass('syncing');
                     $button.html(originalText);
                 } else if (response.success) {
@@ -45,13 +63,13 @@
                         location.reload();
                     }, 1500);
                 } else {
-                    alert((response.data && response.data.message) || dcdAdmin.i18n.error);
+                    showNotice((response.data && response.data.message) || dcdAdmin.i18n.error, 'error');
                     $button.prop('disabled', false).removeClass('syncing');
                     $button.html(originalText);
                 }
             },
             error: function() {
-                alert(dcdAdmin.i18n.error);
+                showNotice(dcdAdmin.i18n.error, 'error');
                 $button.prop('disabled', false).removeClass('syncing');
                 $button.html(originalText);
             }
