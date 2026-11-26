@@ -137,7 +137,7 @@ The sync stops without changing any scores, and the dashboard says why (for exam
 == Changelog ==
 
 = 1.0.18 =
-* Changed: sync results and errors now show as a notice at the top of the screen (and are announced to screen readers) instead of a browser pop-up.
+* Changed: sync errors, and the message shown when a sync is still matching pages, now appear as a notice at the top of the screen (announced to screen readers) instead of a browser pop-up.
 
 = 1.0.17 =
 * Changed: requires PHP 8.2. The bundled Google client already needed it, so on PHP 8.0 or 8.1 the plugin could not run; WordPress now says so before installing or updating.
